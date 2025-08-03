@@ -5,7 +5,6 @@ import { deleteInspection } from '@/app/casis/actions';
 
 export const dynamic = 'force-dynamic';
 
-// Tipe data yang lebih spesifik untuk objek yang diproses
 type Row = { 
   id: string; 
   name: string; 
@@ -36,8 +35,12 @@ type ParentItem = {
   name: string;
 };
 
-// PERBAIKAN: Menghapus type alias dan mendefinisikan tipe props secara inline
-export default async function CasisDetailPage({ params }: { params: { id: string } }) {
+// PERBAIKAN: Mengubah cara props diterima untuk menghindari error build yang aneh.
+// Kita terima 'props' sebagai 'any' lalu langsung definisikan tipenya di dalam fungsi.
+export default async function CasisDetailPage(props: any) {
+  // Tipe yang benar untuk 'params' didefinisikan di sini
+  const { params }: { params: { id: string } } = props;
+  
   const inspectionId = params.id;
   const supabase = createClient();
 
