@@ -17,30 +17,32 @@ type Row = {
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
 
-// PERBAIKAN: Tipe untuk item dari tabel 'inspection_items'
 type InspectionItem = {
   id: string;
   name: string;
   standard: string | null;
   parent_id: string | null;
   page_title: string | null;
-  // ... tambahkan properti lain jika ada
 };
 
-// PERBAIKAN: Tipe untuk item yang sudah digabung dengan hasil inspeksi
 type ItemWithResult = InspectionItem & {
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
 };
 
-// PERBAIKAN: Tipe untuk parent item
 type ParentItem = {
   id: string;
   name: string;
 };
 
-export default async function CasisDetailPage({ params }: { params: { id: string } }) {
+// PERBAIKAN: Membuat tipe Props yang standar untuk halaman Next.js
+type Props = {
+  params: { id: string };
+  // searchParams bisa ditambahkan di sini jika diperlukan
+};
+
+export default async function CasisDetailPage({ params }: Props) {
   const inspectionId = params.id;
   const supabase = createClient();
 
@@ -75,7 +77,6 @@ export default async function CasisDetailPage({ params }: { params: { id: string
     ])
   );
   
-  // PERBAIKAN: Menggunakan tipe 'ItemWithResult' yang sudah didefinisikan
   const itemsWithResults: ItemWithResult[] = (allMasterItems || []).map((item: InspectionItem) => {
     const result = resultsMap.get(item.id);
     return {
@@ -89,11 +90,9 @@ export default async function CasisDetailPage({ params }: { params: { id: string
   const groups: Group = {};
   const parentNameMap = new Map<string, string>();
   
-  // PERBAIKAN: Memberi tipe 'ItemWithResult' pada item saat mapping
   const parentIds = [...new Set(itemsWithResults.map((item: ItemWithResult) => item.parent_id).filter(Boolean))];
   if (parentIds.length > 0) {
     const { data: parents } = await supabase.from('inspection_items').select('id, name').in('id', parentIds);
-    // PERBAIKAN: Memberi tipe 'ParentItem' pada 'p' saat forEach
     (parents || []).forEach((p: ParentItem) => parentNameMap.set(p.id, p.name));
   }
 
