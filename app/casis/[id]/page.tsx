@@ -36,13 +36,12 @@ type ParentItem = {
   name: string;
 };
 
-// PERBAIKAN: Membuat tipe Props yang standar untuk halaman Next.js
-type Props = {
+// PERBAIKAN: Mengganti nama 'Props' menjadi 'CasisDetailPageProps' untuk menghindari konflik
+type CasisDetailPageProps = {
   params: { id: string };
-  // searchParams bisa ditambahkan di sini jika diperlukan
 };
 
-export default async function CasisDetailPage({ params }: Props) {
+export default async function CasisDetailPage({ params }: CasisDetailPageProps) {
   const inspectionId = params.id;
   const supabase = createClient();
 
