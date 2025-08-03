@@ -24,3 +24,24 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+/* CSS Kustom untuk efek teks logo */
+.text-logo {
+  font-weight: 900; /* font-black */
+  color: white;
+  /* Membuat garis tepi merah tipis dan sedikit bayangan */
+  text-shadow: 
+    -1px -1px 0 #c81e1e,  
+     1px -1px 0 #c81e1e,
+    -1px  1px 0 #c81e1e,
+     1px  1px 0 #c81e1e,
+     2px 2px 3px rgba(0, 0, 0, 0.5);
+}
+@media print {
+  .hide-on-print {
+    display: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
