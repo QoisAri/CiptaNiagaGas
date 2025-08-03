@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { CasisDetailClient } from './CasisDetailClient';
 import { deleteInspection } from '@/app/casis/actions';
+import { JSX } from 'react'; // PERBAIKAN: Impor tipe JSX
 
 export const dynamic = 'force-dynamic';
 
@@ -35,12 +36,12 @@ type ParentItem = {
   name: string;
 };
 
-// PERBAIKAN: Mengubah cara props diterima untuk menghindari error build yang aneh.
-// Kita terima 'props' sebagai 'any' lalu langsung definisikan tipenya di dalam fungsi.
-export default async function CasisDetailPage(props: any) {
-  // Tipe yang benar untuk 'params' didefinisikan di sini
-  const { params }: { params: { id: string } } = props;
-  
+type PageProps = {
+  params: { id: string };
+};
+
+// PERBAIKAN: Mendefinisikan tipe props dan return type secara eksplisit
+export default async function CasisDetailPage({ params }: PageProps): Promise<JSX.Element> {
   const inspectionId = params.id;
   const supabase = createClient();
 
