@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { upsertInspectionResult, deleteInspection, type FormState } from '@/app/casis/actions';
+// PERBAIKAN: Menghapus 'deleteInspection' dan 'FormState' yang tidak terpakai
+import { upsertInspectionResult } from '@/app/casis/actions';
 import { FaPrint } from 'react-icons/fa';
 
-// Tipe data yang diterima dari server, dengan 'standard'
+// Tipe data yang lebih spesifik untuk props
 type Row = {
   id: string;
   name: string;
@@ -18,8 +19,22 @@ type Row = {
 };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
+
+// PERBAIKAN: Membuat tipe yang spesifik untuk inspectionHeader, menggantikan 'any'
+type InspectionHeaderType = {
+  id: string;
+  tanggal: string;
+  catatan: string | null;
+  chassis: {
+    chassis_code: string;
+  } | null;
+  profiles: {
+    name: string;
+  } | null;
+};
+
 type Props = { 
-  inspectionHeader: any; 
+  inspectionHeader: InspectionHeaderType; 
   groups: Group;
   deleteAction: (formData: FormData) => void; 
 };
@@ -150,7 +165,7 @@ export const CasisDetailClient = ({ inspectionHeader, groups, deleteAction }: Pr
                   {subGroups.map((subGroup) => (
                     <React.Fragment key={subGroup.parentName}>
                       {subGroup.rows.length > 1 && subGroup.parentName !== subGroup.rows[0]?.name && (
-                         <tr><td colSpan={5} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
+                          <tr><td colSpan={5} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
                       )}
                       {subGroup.rows.map((row) => (
                         <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} />
