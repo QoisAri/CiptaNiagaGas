@@ -36,12 +36,8 @@ type ParentItem = {
   name: string;
 };
 
-// PERBAIKAN: Mengganti nama 'Props' menjadi 'CasisDetailPageProps' untuk menghindari konflik
-type CasisDetailPageProps = {
-  params: { id: string };
-};
-
-export default async function CasisDetailPage({ params }: CasisDetailPageProps) {
+// PERBAIKAN: Menghapus type alias dan mendefinisikan tipe props secara inline
+export default async function CasisDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
   const supabase = createClient();
 
