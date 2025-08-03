@@ -3,8 +3,11 @@
 import { useState, useMemo } from 'react';
 import { FaTools } from 'react-icons/fa';
 import { DownloadButton } from './DownloadButton';
+// PERBAIKAN: Mengimpor tipe data dari file page.tsx
+import { type MaintenanceItem } from './page';
 
-export default function MaintenanceListClient({ initialMaintenanceData }: { initialMaintenanceData: any[] }) {
+// PERBAIKAN: Mengganti 'any[]' dengan tipe yang sudah didefinisikan
+export default function MaintenanceListClient({ initialMaintenanceData }: { initialMaintenanceData: MaintenanceItem[] }) {
   const [filterAsset, setFilterAsset] = useState('all');
   const [filterFeet, setFilterFeet] = useState('all');
 
@@ -30,7 +33,6 @@ export default function MaintenanceListClient({ initialMaintenanceData }: { init
         <DownloadButton data={filteredData} />
       </div>
 
-      {/* Area Filter */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 rounded-lg hide-on-print">
         <div>
           <label className="block text-sm font-medium text-gray-700">Filter Tipe Aset</label>
@@ -59,7 +61,6 @@ export default function MaintenanceListClient({ initialMaintenanceData }: { init
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tgl Ditemukan</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tipe Aset</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Kode Aset</th>
-              {/* PERBAIKAN: Mengganti nama kolom */}
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Ukuran Feet</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Deskripsi Masalah</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tgl Selesai</th>

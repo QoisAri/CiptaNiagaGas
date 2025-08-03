@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+// PERBAIKAN: Menghapus 'useAnimation' karena tidak terpakai
+import { motion } from 'framer-motion';
 import Image from 'next/image';
 
 type ContainerData = {
@@ -15,14 +16,15 @@ type ContainerData = {
 const dummyContainers: ContainerData[] = Array.from({ length: 77 }, (_, i) => ({
   id: i,
   name: `Container ${i + 1}`,
-  image: '/images/container.png', // Ganti dengan gambar berbeda jika perlu
+  image: '/images/container.png',
   start: '01/01/25 - 09:00',
   finish: '03/05/25 - 09:00',
 }));
 
 export default function ContainerCarousel() {
   const [current, setCurrent] = useState(0);
-  const controls = useAnimation();
+  // PERBAIKAN: Baris ini dihapus karena variabel 'controls' tidak pernah digunakan
+  // const controls = useAnimation();
 
   useEffect(() => {
     const interval = setInterval(() => {

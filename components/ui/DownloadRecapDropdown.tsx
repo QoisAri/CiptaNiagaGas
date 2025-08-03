@@ -1,17 +1,17 @@
 'use client'
 
 import { useState } from 'react';
-// Impor fungsi getRecapData. Pastikan path-nya benar.
-import { getRecapData } from '@/app/head/actions';
-// Impor library xlsx yang baru diinstall
+import { getRecapData } from '@/app/casis/actions';
 import * as XLSX from 'xlsx';
+
+// PERBAIKAN: Membuat tipe data yang spesifik untuk baris rekap
+type RecapRow = Record<string, string | number | null>;
 
 export default function DownloadRecapDropdown() {
   const [isOpen, setIsOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [status, setStatus] = useState('');
 
-  // Fungsi bantuan untuk membersihkan nama sheet agar valid
   const sanitizeSheetName = (name: string) => {
     return name.replace(/[:\\/?*[\]]/g, '').substring(0, 31);
   };
@@ -22,7 +22,8 @@ export default function DownloadRecapDropdown() {
     setIsOpen(false);
 
     try {
-      const data = await getRecapData(period);
+      // Kita asumsikan getRecapData mengembalikan array dari objek RecapRow
+      const data: RecapRow[] = await getRecapData(period);
 
       if (data.length === 0) {
         setStatus('Tidak ada data untuk diunduh.');
@@ -31,28 +32,25 @@ export default function DownloadRecapDropdown() {
         return;
       }
 
-      // --- LOGIKA BARU: KELOMPOKKAN DATA BERDASARKAN KODE ASET ---
+      // PERBAIKAN: Mengganti 'any[]' dengan 'RecapRow[]' yang lebih aman
       const groupedByAsset = data.reduce((acc, row) => {
-        const assetCode = row['Kode Aset'] || 'Tanpa Kode';
+        const assetCode = (row['Kode Aset'] as string) || 'Tanpa Kode';
         if (!acc[assetCode]) {
           acc[assetCode] = [];
         }
         acc[assetCode].push(row);
         return acc;
-      }, {} as Record<string, any[]>);
+      }, {} as Record<string, RecapRow[]>);
 
-      // --- LOGIKA BARU: BUAT FILE EXCEL DENGAN BANYAK SHEET ---
-      const wb = XLSX.utils.book_new(); // Buat workbook (file Excel) baru
+      const wb = XLSX.utils.book_new();
 
-      // Loop melalui setiap grup (setiap kode aset)
       for (const assetCode in groupedByAsset) {
         const sheetData = groupedByAsset[assetCode];
         const sheetName = sanitizeSheetName(assetCode);
-        const ws = XLSX.utils.json_to_sheet(sheetData); // Buat worksheet dari data
-        XLSX.utils.book_append_sheet(wb, ws, sheetName); // Tambahkan worksheet ke workbook
+        const ws = XLSX.utils.json_to_sheet(sheetData);
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
       }
 
-      // Picu download file .xlsx
       XLSX.writeFile(wb, `rekap-${period}-${new Date().toISOString().split('T')[0]}.xlsx`);
       
       setStatus('Download berhasil!');

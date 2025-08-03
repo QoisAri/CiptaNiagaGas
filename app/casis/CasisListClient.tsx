@@ -4,13 +4,25 @@ import React from 'react';
 import { useFormStatus } from 'react-dom';
 import { deleteInspection } from '@/app/casis/actions';
 
-// Tipe data (bisa disamakan dengan Head)
+// PERBAIKAN: Membuat tipe data yang lebih spesifik
 type Row = { id: string; name: string; kondisi: string; keterangan: string | null; };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
-type Props = { inspectionHeader: any; groups: Group; };
 
-// Tombol Hapus Utama
+// PERBAIKAN: Tipe spesifik untuk inspectionHeader, menggantikan 'any'
+type InspectionHeader = {
+  id: string;
+  tanggal: string;
+  catatan: string | null;
+  profiles: { name: string } | null;
+  chassis: { chassis_code: string } | null;
+};
+
+type Props = { 
+  inspectionHeader: InspectionHeader; 
+  groups: Group; 
+};
+
 function DeleteInspectionButton({ inspectionId }: { inspectionId: string }) {
     const { pending } = useFormStatus();
     const handleDelete = (event: React.FormEvent<HTMLFormElement>) => {
@@ -28,7 +40,6 @@ function DeleteInspectionButton({ inspectionId }: { inspectionId: string }) {
     );
 }
 
-// Komponen Utama
 export const CasisDetailClient = ({ inspectionHeader, groups }: Props) => {
   return (
     <div className="space-y-6">
@@ -63,7 +74,7 @@ export const CasisDetailClient = ({ inspectionHeader, groups }: Props) => {
                 {subGroups.map((subGroup) => (
                   <React.Fragment key={subGroup.parentName}>
                     {subGroup.rows.length > 1 && subGroup.parentName !== subGroup.rows[0].name && (
-                       <tr><td colSpan={3} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
+                        <tr><td colSpan={3} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
                     )}
                     {subGroup.rows.map((row) => (
                       <tr key={row.id}><td className="border border-black px-4 py-2 text-black">{row.name}</td><td className="border border-black px-4 py-2 text-black">{row.kondisi}</td><td className="border border-black px-4 py-2 text-black">{row.keterangan}</td></tr>

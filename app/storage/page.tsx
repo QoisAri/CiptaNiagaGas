@@ -1,17 +1,15 @@
+// PERBAIKAN: Mengimpor Link dari next/link
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddStorageButton } from './AddStorageButton';
 
-// =================================================================
-// BAGIAN 1: Definisi Komponen FilterForm yang Diperbarui
-// =================================================================
 function FilterForm({
   storage_code,
-  feet, // Diubah dari 'type' menjadi 'feet'
+  feet,
   pemeriksa,
 }: {
   storage_code?: string;
-  feet?: string; // Diubah dari 'type' menjadi 'feet'
+  feet?: string;
   pemeriksa?: string;
 }) {
   return (
@@ -30,7 +28,6 @@ function FilterForm({
         />
       </div>
       
-      {/* PERBAIKAN: Mengubah input 'Tipe' menjadi dropdown 'Ukuran Feet' */}
       <div>
         <label htmlFor="feet" className="block text-sm font-medium text-gray-700 mb-1">
           Filter Ukuran Feet
@@ -48,7 +45,7 @@ function FilterForm({
         </select>
       </div>
 
-       <div>
+        <div>
         <label htmlFor="pemeriksa" className="block text-sm font-medium text-gray-700 mb-1">
           Filter Nama Pemeriksa
         </label>
@@ -65,44 +62,50 @@ function FilterForm({
         <button type="submit" className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
           Cari
         </button>
-        <a href="/storage" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+        {/* PERBAIKAN: Mengganti <a> dengan <Link> */}
+        <Link href="/storage" className="w-full inline-flex justify-center items-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
           Clear
-        </a>
+        </Link>
       </div>
     </form>
   );
 }
 
+// PERBAIKAN: Membuat tipe data yang lebih spesifik
+type InspectionResult = {
+  kondisi: string | null;
+};
+type Inspection = {
+  id: string;
+  tanggal: string;
+  storages: { storage_code: string | null } | null;
+  profiles: { name: string | null } | null;
+  inspection_results: InspectionResult[];
+};
 
-// =================================================================
-// BAGIAN 2: Halaman Utama yang Diperbarui
-// =================================================================
 export default async function StorageListPage({
   searchParams,
 }: {
   searchParams?: {
     storage_code?: string;
-    feet?: string; // Diubah dari 'type' menjadi 'feet'
+    feet?: string;
     pemeriksa?: string;
   };
 }) {
   const supabase = createClient();
   const storageCode = searchParams?.storage_code;
-  const feet = searchParams?.feet; // Diubah dari 'type' menjadi 'feet'
+  const feet = searchParams?.feet;
   const pemeriksa = searchParams?.pemeriksa;
   
-  // PERBAIKAN: Mengambil kolom 'feet' dari tabel 'storages'
   let query = supabase
     .from('inspections')
     .select('*, storages!inner(storage_code, feet), profiles!inner(name), inspection_results(kondisi)')
     .not('storage_id', 'is', null)
     .order('tanggal', { ascending: false });
 
-  // Terapkan filter jika ada
   if (storageCode) {
     query = query.ilike('storages.storage_code', `%${storageCode}%`);
   }
-  // PERBAIKAN: Memfilter berdasarkan kolom 'feet'
   if (feet) {
     query = query.eq('storages.feet', feet);
   }
@@ -110,8 +113,11 @@ export default async function StorageListPage({
     query = query.ilike('profiles.name', `%${pemeriksa}%`);
   }
 
-  const { data: inspections, error } = await query;
+  const { data, error } = await query;
   
+  // PERBAIKAN: Memberi tipe yang benar pada data
+  const inspections: Inspection[] = data || [];
+
   if (error) {
     return <div className="p-6 text-red-500">Error: {error.message}</div>;
   }
@@ -139,7 +145,8 @@ export default async function StorageListPage({
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                const hasError = item.inspection_results.some((result: any) => result.kondisi === 'tidak_baik');
+                // PERBAIKAN: Mengganti 'any' dengan tipe 'InspectionResult'
+                const hasError = item.inspection_results.some((result: InspectionResult) => result.kondisi === 'tidak_baik');
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>

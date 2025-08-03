@@ -5,23 +5,46 @@ import { deleteInspection } from '@/app/head/actions';
 
 export const dynamic = 'force-dynamic';
 
-// Tipe data untuk mempermudah
+// Tipe data yang lebih spesifik
 type Row = { 
-  id: string; // item id
+  id: string;
   name: string;
-  standard: string | null; // <-- Tambahkan properti standard
-  resultId: string | null; // result id
+  standard: string | null;
+  resultId: string | null;
   kondisi: string;
   keterangan: string | null;
 };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
 
+// PERBAIKAN: Tipe untuk item dari tabel 'inspection_items'
+type InspectionItem = {
+  id: string;
+  name: string;
+  standard: string | null;
+  parent_id: string | null;
+  page_title: string | null;
+  category: string | null;
+  // ... tambahkan properti lain jika ada
+};
+
+// PERBAIKAN: Tipe untuk item yang sudah digabung dengan hasil inspeksi
+type ItemWithResult = InspectionItem & {
+  resultId: string | null;
+  kondisi: string;
+  keterangan: string | null;
+};
+
+// PERBAIKAN: Tipe untuk parent item
+type ParentItem = {
+  id: string;
+  name: string;
+};
+
 export default async function HeadDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
   const supabase = createClient();
 
-  // 1. Ambil data header inspeksi
   const { data: inspectionHeader, error: headerError } = await supabase
     .from('inspections')
     .select(`*, heads ( head_code, feet ), profiles ( name )`)
@@ -34,10 +57,9 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
 
   const feet = inspectionHeader.heads.feet;
   
-  // 2. Ambil semua item master yang relevan
   const { data: allMasterItems, error: masterItemsError } = await supabase
     .from('inspection_items')
-    .select('*') // Ambil semua kolom, termasuk 'standard'
+    .select('*')
     .eq('category', 'Head')
     .ilike('subtype', `%${feet} Feet%`);
 
@@ -45,13 +67,11 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     return <div>Gagal memuat daftar item master.</div>;
   }
   
-  // 3. Ambil semua hasil inspeksi untuk ID ini
   const { data: inspectionResults } = await supabase
     .from('inspection_results')
     .select('id, item_id, kondisi, keterangan')
     .eq('inspection_id', inspectionId);
   
-  // 4. Gabungkan hasil dengan item master di JavaScript
   const resultsMap = new Map(
     (inspectionResults || []).map(result => [
       result.item_id,
@@ -59,7 +79,8 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     ])
   );
   
-  const itemsWithResults = (allMasterItems || []).map(item => {
+  // PERBAIKAN: Menggunakan tipe 'ItemWithResult' yang sudah didefinisikan
+  const itemsWithResults: ItemWithResult[] = (allMasterItems || []).map((item: InspectionItem) => {
     const result = resultsMap.get(item.id);
     return {
       ...item,
@@ -69,14 +90,15 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     };
   });
 
-  // 5. Proses data menjadi struktur Grup dan Sub-Grup
   const groups: Group = {};
   const parentNameMap = new Map<string, string>();
   
-  const parentIds = [...new Set(itemsWithResults.map((item: any) => item.parent_id).filter(Boolean))];
+  // PERBAIKAN: Memberi tipe 'ItemWithResult' pada item saat mapping
+  const parentIds = [...new Set(itemsWithResults.map((item: ItemWithResult) => item.parent_id).filter(Boolean))];
   if (parentIds.length > 0) {
     const { data: parents } = await supabase.from('inspection_items').select('id, name').in('id', parentIds);
-    (parents || []).forEach((p: any) => parentNameMap.set(p.id, p.name));
+    // PERBAIKAN: Memberi tipe 'ParentItem' pada 'p' saat forEach
+    (parents || []).forEach((p: ParentItem) => parentNameMap.set(p.id, p.name));
   }
 
   for (const item of itemsWithResults) {
@@ -94,7 +116,7 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     const rowData: Row = { 
       id: item.id, 
       name: item.name, 
-      standard: item.standard, // <-- Kirim data standard ke client
+      standard: item.standard,
       resultId: item.resultId, 
       kondisi: item.kondisi, 
       keterangan: item.keterangan 

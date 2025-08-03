@@ -4,10 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { upsertInspectionResult, deleteInspection, type FormState } from '@/app/storage/actions';
+// PERBAIKAN: Menghapus 'deleteInspection' dan 'FormState' yang tidak terpakai
+import { upsertInspectionResult } from '@/app/storage/actions';
 import { FaPrint } from 'react-icons/fa';
 
-// Tipe data
+// Tipe data yang lebih spesifik
 type Row = {
   id: string;
   name: string;
@@ -16,13 +17,22 @@ type Row = {
   keterangan: string | null;
 };
 type Group = Record<string, Row[]>;
+
+// PERBAIKAN: Tipe spesifik untuk inspectionHeader, menggantikan 'any'
+type InspectionHeaderType = {
+  id: string;
+  tanggal: string;
+  catatan: string | null;
+  profiles: { name: string; } | null;
+  storages: { storage_code: string; } | null; // Diubah dari chassis ke storages
+};
+
 type Props = { 
-  inspectionHeader: any; 
+  inspectionHeader: InspectionHeaderType; 
   groups: Group;
   deleteAction: (formData: FormData) => void; 
 };
 
-// Tombol Submit untuk form edit
 function SubmitButton({ onCancel }: { onCancel: () => void }) {
   const { pending } = useFormStatus();
   return (
@@ -37,7 +47,6 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-// Komponen untuk satu baris item dengan fungsionalitas edit
 function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: string, pathname: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formState, formAction] = useActionState(upsertInspectionResult, { message: '', success: false });
@@ -87,7 +96,6 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
   );
 }
 
-// Komponen Utama
 export const StorageDetailClient = ({ inspectionHeader, groups, deleteAction }: Props) => {
   const pathname = usePathname();
 

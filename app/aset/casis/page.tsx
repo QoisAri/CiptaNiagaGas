@@ -1,10 +1,9 @@
-'use client'; // Komponen ini interaktif, jadi kita gunakan 'use client'
+'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-// Pastikan path ini benar menuju file client Supabase Anda
+// PERBAIKAN: Mengimpor useCallback
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
-// Tipe data untuk objek casis
 type Chassis = {
   id: number;
   chassis_code: string;
@@ -13,7 +12,6 @@ type Chassis = {
   created_at: string;
 };
 
-// Komponen Ikon (SVG) untuk UI
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -34,13 +32,12 @@ export default function DaftarCasisPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State untuk form tambah data baru
   const [newChassisCode, setNewChassisCode] = useState('');
   const [newChassisType, setNewChassisType] = useState('');
   const [newChassisFeet, setNewChassisFeet] = useState<number | ''>('');
 
-  // Fungsi untuk mengambil semua data casis dari Supabase
-  const fetchChassis = async () => {
+  // PERBAIKAN: Membungkus fungsi dengan useCallback agar tidak dibuat ulang di setiap render
+  const fetchChassis = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('chassis')
@@ -54,14 +51,13 @@ export default function DaftarCasisPage() {
       setChassisList(data);
     }
     setIsLoading(false);
-  };
+  }, [supabase]); // supabase client stabil, jadi ini aman
 
-  // Jalankan fetchChassis() saat komponen pertama kali dimuat
+  // PERBAIKAN: Menambahkan fetchChassis ke dependency array
   useEffect(() => {
     fetchChassis();
-  }, []);
+  }, [fetchChassis]);
 
-  // Fungsi untuk menangani penambahan casis baru
   const handleAddChassis = async (e: FormEvent) => {
     e.preventDefault();
     if (!newChassisCode || !newChassisType || !newChassisFeet) {
@@ -82,16 +78,12 @@ export default function DaftarCasisPage() {
       console.error('Error adding chassis:', error);
       alert('Gagal menambahkan casis baru.');
     } else if (data) {
-      // Tambahkan data baru ke daftar yang ada di UI secara langsung
       setChassisList([data[0], ...chassisList]);
-      // Reset form dan tutup modal
       closeModal();
     }
   };
 
-  // Fungsi untuk menghapus casis
   const handleDeleteChassis = async (id: number) => {
-    // Konfirmasi sebelum menghapus
     if (!window.confirm('Apakah Anda yakin ingin menghapus casis ini?')) {
       return;
     }
@@ -105,7 +97,6 @@ export default function DaftarCasisPage() {
       console.error('Error deleting chassis:', error);
       alert('Gagal menghapus casis.');
     } else {
-      // Hapus item dari state agar UI terupdate
       setChassisList(chassisList.filter(chassis => chassis.id !== id));
     }
   };
@@ -113,7 +104,6 @@ export default function DaftarCasisPage() {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => {
     setIsModalOpen(false);
-    // Reset nilai form
     setNewChassisCode('');
     setNewChassisType('');
     setNewChassisFeet('');
@@ -132,7 +122,6 @@ export default function DaftarCasisPage() {
         </button>
       </div>
 
-      {/* Tabel untuk menampilkan data */}
       <div className="overflow-x-auto">
         <table className="w-full table-auto border-collapse">
           <thead className="bg-gray-100">
@@ -172,7 +161,6 @@ export default function DaftarCasisPage() {
         </table>
       </div>
 
-      {/* Modal untuk Tambah Casis Baru */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">

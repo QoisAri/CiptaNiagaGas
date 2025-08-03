@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from 'react';
 import { FaPrint, FaShower } from 'react-icons/fa';
+// Impor tipe data dari file page.tsx
+import { type HistoryItem } from './page';
 
-export function WashingHistoryClient({ initialHistoryData }: { initialHistoryData: any[] }) {
+export function WashingListClient({ initialHistoryData }: { initialHistoryData: HistoryItem[] }) {
   const [filterAsset, setFilterAsset] = useState('all');
   const [filterFeet, setFilterFeet] = useState('all');
 
@@ -38,7 +40,6 @@ export function WashingHistoryClient({ initialHistoryData }: { initialHistoryDat
         </button>
       </div>
 
-      {/* Area Filter */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 rounded-lg hide-on-print">
         <div>
           <label className="block text-sm font-medium text-gray-700">Filter Tipe Aset</label>

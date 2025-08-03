@@ -4,27 +4,37 @@ import React, { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { upsertInspectionResult, deleteInspection, type FormState } from '@/app/head/actions';
+// PERBAIKAN: Menghapus 'deleteInspection' dan 'FormState' yang tidak terpakai
+import { upsertInspectionResult } from '@/app/head/actions';
 import { FaPrint } from 'react-icons/fa';
 
-// Tipe data yang diterima dari server
+// Tipe data yang lebih spesifik
 type Row = {
   id: string;
   name: string;
-  standard: string | null; // <-- Tambahkan properti standard
+  standard: string | null;
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
 };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
+
+// PERBAIKAN: Tipe spesifik untuk inspectionHeader, menggantikan 'any'
+type InspectionHeaderType = {
+  id: string;
+  tanggal: string;
+  catatan: string | null;
+  profiles: { name: string; } | null;
+  heads: { head_code: string; } | null;
+};
+
 type Props = { 
-  inspectionHeader: any; 
+  inspectionHeader: InspectionHeaderType; 
   groups: Group;
   deleteAction: (formData: FormData) => void; 
 };
 
-// Tombol Submit untuk form edit
 function SubmitButton({ onCancel }: { onCancel: () => void }) {
   const { pending } = useFormStatus();
   return (
@@ -39,7 +49,6 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-// Komponen untuk satu baris item dengan fungsionalitas edit
 function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: string, pathname: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formState, formAction] = useActionState(upsertInspectionResult, { message: '', success: false });
@@ -52,7 +61,6 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
   return (
     <tr>
       <td className="border border-black px-4 py-2 text-black">{row.name}</td>
-      {/* Kolom BARU untuk Standard */}
       <td className="border border-black px-4 py-2 text-black text-sm italic">{row.standard || '-'}</td>
       
       {isEditing ? (
@@ -92,7 +100,6 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
   );
 }
 
-// Komponen Utama
 export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction }: Props) => {
   const pathname = usePathname();
 
@@ -144,7 +151,6 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
                 <thead className="bg-gray-200">
                   <tr>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black w-1/3">Item</th>
-                    {/* Header BARU untuk Standard */}
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
@@ -155,7 +161,7 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
                   {subGroups.map((subGroup) => (
                     <React.Fragment key={subGroup.parentName}>
                       {subGroup.rows.length > 1 && subGroup.parentName !== subGroup.rows[0]?.name && (
-                         <tr><td colSpan={5} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
+                          <tr><td colSpan={5} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
                       )}
                       {subGroup.rows.map((row) => (
                         <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} />

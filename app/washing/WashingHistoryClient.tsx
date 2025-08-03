@@ -2,8 +2,11 @@
 
 import { useState, useMemo } from 'react';
 import { FaPrint, FaShower } from 'react-icons/fa';
+// PERBAIKAN: Mengimpor tipe data dari file page.tsx
+import { type HistoryItem } from './page';
 
-export function WashingHistoryClient({ initialHistoryData }: { initialHistoryData: any[] }) {
+// PERBAIKAN: Mengganti 'any[]' dengan 'HistoryItem[]'
+export function WashingHistoryClient({ initialHistoryData }: { initialHistoryData: HistoryItem[] }) {
   const [filterAsset, setFilterAsset] = useState('all');
   const [filterFeet, setFilterFeet] = useState('all');
 
@@ -38,14 +41,12 @@ export function WashingHistoryClient({ initialHistoryData }: { initialHistoryDat
         </button>
       </div>
 
-      {/* Area Filter */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 rounded-lg hide-on-print">
         <div>
           <label className="block text-sm font-medium text-gray-700">Filter Tipe Aset</label>
           <select value={filterAsset} onChange={e => setFilterAsset(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md text-black">
             <option value="all">Semua Tipe</option>
             <option value="storage">Storage</option>
-            {/* Tambahkan Head & Casis di sini jika database sudah diupdate */}
           </select>
         </div>
         <div>

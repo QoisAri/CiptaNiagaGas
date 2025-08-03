@@ -6,9 +6,6 @@ import { redirect } from 'next/navigation';
 
 export type FormState = { message: string; success: boolean; error?: boolean };
 
-/**
- * Aksi untuk MEMBUAT atau MENGUPDATE satu baris hasil inspeksi.
- */
 export async function upsertInspectionResult(
   prevState: FormState,
   formData: FormData
@@ -28,7 +25,6 @@ export async function upsertInspectionResult(
     return { message: 'Data tidak lengkap.', success: false };
   }
 
-  // Jika resultId sudah ada, lakukan UPDATE. Jika tidak, lakukan INSERT.
   if (data.resultId && data.resultId !== 'undefined' && data.resultId !== 'null') {
     const { error } = await supabase
       .from('inspection_results')
@@ -49,9 +45,6 @@ export async function upsertInspectionResult(
   return { message: 'Data berhasil disimpan!', success: true };
 }
 
-/**
- * Aksi untuk MENGHAPUS seluruh record inspeksi.
- */
 export async function deleteInspection(formData: FormData) {
   const inspectionId = formData.get('inspectionId') as string;
   if (!inspectionId) {
@@ -66,7 +59,6 @@ export async function deleteInspection(formData: FormData) {
 
   if (error) {
     console.error('Delete Inspection Error:', error);
-    // Di aplikasi production, Anda mungkin ingin menangani error ini dengan lebih baik
     return;
   }
 
@@ -78,12 +70,12 @@ export async function addHead(
   formData: FormData
 ): Promise<FormState> {
   const supabase = createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  // PERBAIKAN: Menghapus variabel 'user' dan 'userError' yang tidak terpakai
+  // const { data: { user }, error: userError } = await supabase.auth.getUser();
   const headCode = formData.get('head_code') as string;
   const type = formData.get('type') as string;
   const feet = formData.get('feet') as string;
 
-  // Validasi sederhana
   if (!headCode || !type || !feet) {
     return { message: 'Semua field wajib diisi.', success: false, error: true };
   }
@@ -101,7 +93,6 @@ export async function addHead(
     return { message: `Gagal menyimpan: ${error.message}`, success: false, error: true };
   }
 
-  // Jika berhasil, revalidate halaman daftar agar data baru muncul
   revalidatePath('/head');
   return { message: 'Head baru berhasil ditambahkan!', success: true };
 }

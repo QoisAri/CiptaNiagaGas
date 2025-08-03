@@ -1,11 +1,9 @@
-'use client'; // Komponen ini interaktif, jadi kita gunakan 'use client'
+'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-// Pastikan path ini benar menuju file client Supabase Anda
+// PERBAIKAN: Mengimpor useCallback
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
-// Tipe data untuk objek head
-// Perhatikan: ID untuk head adalah string (uuid), bukan number
 type Head = {
   id: string;
   head_code: string;
@@ -14,7 +12,6 @@ type Head = {
   created_at: string;
 };
 
-// Komponen Ikon (SVG) untuk UI
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -35,16 +32,15 @@ export default function DaftarHeadPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State untuk form tambah data baru
   const [newHeadCode, setNewHeadCode] = useState('');
   const [newHeadType, setNewHeadType] = useState('');
   const [newHeadFeet, setNewHeadFeet] = useState<number | ''>('');
 
-  // Fungsi untuk mengambil semua data head dari Supabase
-  const fetchHeads = async () => {
+  // PERBAIKAN: Membungkus fungsi dengan useCallback
+  const fetchHeads = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
-      .from('heads') // Menggunakan tabel 'heads'
+      .from('heads')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -55,14 +51,13 @@ export default function DaftarHeadPage() {
       setHeadList(data);
     }
     setIsLoading(false);
-  };
+  }, [supabase]);
 
-  // Jalankan fetchHeads() saat komponen pertama kali dimuat
+  // PERBAIKAN: Menambahkan fetchHeads ke dependency array
   useEffect(() => {
     fetchHeads();
-  }, []);
+  }, [fetchHeads]);
 
-  // Fungsi untuk menangani penambahan head baru
   const handleAddHead = async (e: FormEvent) => {
     e.preventDefault();
     if (!newHeadCode || !newHeadType || !newHeadFeet) {
@@ -71,7 +66,7 @@ export default function DaftarHeadPage() {
     }
 
     const { data, error } = await supabase
-      .from('heads') // Menggunakan tabel 'heads'
+      .from('heads')
       .insert([{ 
         head_code: newHeadCode, 
         type: newHeadType, 
@@ -88,14 +83,13 @@ export default function DaftarHeadPage() {
     }
   };
 
-  // Fungsi untuk menghapus head
   const handleDeleteHead = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus head ini?')) {
       return;
     }
 
     const { error } = await supabase
-      .from('heads') // Menggunakan tabel 'heads'
+      .from('heads')
       .delete()
       .match({ id: id });
 
@@ -167,7 +161,6 @@ export default function DaftarHeadPage() {
         </table>
       </div>
 
-      {/* Modal untuk Tambah Head Baru */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">

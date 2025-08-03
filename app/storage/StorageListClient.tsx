@@ -5,15 +5,23 @@ import { useState } from 'react';
 import { useSelection } from '../context/SelectionContext';
 import AddStorageModal from '@/components/modals/AddStorageModal';
 
-export default function StorageListClient({ initialStorageData }: { initialStorageData: any[] }) {
+// PERBAIKAN: Membuat tipe data yang spesifik untuk item storage
+type StorageItem = {
+  id: string;
+  type: string | null; // Tipe bisa null
+  code: string;
+  tanggal: string;
+  pemeriksa: string;
+  hasError: boolean;
+};
+
+// PERBAIKAN: Mengganti 'any[]' dengan tipe yang sudah didefinisikan
+export default function StorageListClient({ initialStorageData }: { initialStorageData: StorageItem[] }) {
   const { selections, isLoading } = useSelection();
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  // --- LOGIKA FILTER FINAL ---
   const filteredData = selections.storage.length > 0
     ? initialStorageData.filter(item => {
-        // Cek apakah 'item.type' (misal: "Vertical Storage") mengandung salah satu dari
-        // nilai di 'selections.storage' (misal: "Vertical")
         return selections.storage.some((selection: string) => 
           item.type && item.type.toLowerCase().includes(selection.toLowerCase())
         );

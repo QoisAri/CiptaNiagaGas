@@ -1,7 +1,26 @@
 import { createClient } from '@/utils/supabase/server';
 import { WashingHistoryClient } from './WashingHistoryClient';
 
-async function getWashingHistory() {
+export type HistoryItem = {
+  id: string;
+  tanggal: string;
+  assetType: 'Storage' | 'Head' | 'Casis';
+  kodeAset: string;
+  tipeFeet: string | null;
+  diliputOleh: string;
+  keterangan: string | null;
+};
+
+// PERBAIKAN: Mengubah tipe relasi menjadi array objek
+type RawRecord = {
+  id: string;
+  washed_at: string;
+  notes: string | null;
+  washed_by: { name: string }[] | null; // Diubah menjadi array
+  storages: { storage_code: string; feet: number; type: string | null }[] | null; // Diubah menjadi array
+};
+
+async function getWashingHistory(): Promise<HistoryItem[]> {
   const supabase = createClient();
 
   const { data, error } = await supabase
@@ -20,13 +39,12 @@ async function getWashingHistory() {
     return [];
   }
 
-  const historyList = data.map(record => {
-    // Saat ini, kita asumsikan semua adalah Storage
-    // Jika nanti ada Head/Casis, logika ini perlu diperluas
-    const asset = Array.isArray(record.storages) ? record.storages[0] : record.storages;
-    const washedBy = Array.isArray(record.washed_by) ? record.washed_by[0] : record.washed_by;
+  // PERBAIKAN: Logika map disesuaikan untuk mengambil elemen pertama dari array
+  const historyList = (data as RawRecord[]).map(record => {
+    const asset = record.storages?.[0]; // Ambil objek pertama dari array storages
+    const washedBy = record.washed_by?.[0]; // Ambil objek pertama dari array washed_by
 
-    if (!asset) return null;
+    if (!asset) return null; // Jika tidak ada aset terkait, lewati record ini
 
     return {
       id: record.id,
@@ -37,7 +55,7 @@ async function getWashingHistory() {
       diliputOleh: washedBy?.name || 'N/A',
       keterangan: record.notes,
     };
-  }).filter(Boolean); // Menghapus data yang tidak lengkap
+  }).filter((item): item is HistoryItem => item !== null);
 
   return historyList;
 }
@@ -45,6 +63,6 @@ async function getWashingHistory() {
 export default async function WashingHistoryPage() {
   const historyData = await getWashingHistory();
   return (
-    <WashingHistoryClient initialHistoryData={historyData as any[]} />
+    <WashingHistoryClient initialHistoryData={historyData} />
   );
 }

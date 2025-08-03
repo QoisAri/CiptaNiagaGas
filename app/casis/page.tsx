@@ -1,8 +1,8 @@
+// PERBAIKAN: Mengimpor Link dari next/link
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddCasisButton } from './AddCasisButton';
 
-// PERBAIKAN: Melengkapi kembali isi komponen FilterForm
 function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_code?: string; pemeriksa?: string; }) {
   return (
     <form className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border items-end">
@@ -24,13 +24,25 @@ function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_
       </div>
       <div className="flex space-x-2 col-span-1 md:col-span-2">
         <button type="submit" className="w-full inline-flex justify-center py-2 px-4 rounded-md text-white bg-indigo-600">Cari</button>
-        <a href="/casis" className="w-full inline-flex justify-center py-2 px-4 rounded-md text-gray-700 bg-white border">Clear</a>
+        {/* PERBAIKAN: Mengganti tag <a> dengan komponen <Link> */}
+        <Link href="/casis" className="w-full inline-flex justify-center items-center py-2 px-4 rounded-md text-gray-700 bg-white border">Clear</Link>
       </div>
     </form>
   );
 }
 
-// Halaman Utama untuk Daftar Casis
+// PERBAIKAN: Membuat tipe data yang lebih spesifik
+type InspectionResult = {
+  kondisi: string | null;
+};
+type Inspection = {
+  id: string;
+  tanggal: string;
+  chassis: { chassis_code: string | null } | null;
+  profiles: { name: string | null } | null;
+  inspection_results: InspectionResult[];
+};
+
 export default async function CasisListPage({ searchParams }: { searchParams?: { feet?: string; chassis_code?: string; pemeriksa?: string; }; }) {
   const supabase = createClient();
   const feet = searchParams?.feet;
@@ -47,8 +59,11 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
   if (chassisCode) query = query.ilike('chassis.chassis_code', `%${chassisCode}%`);
   if (pemeriksa) query = query.ilike('profiles.name', `%${pemeriksa}%`);
 
-  const { data: inspections, error } = await query;
+  const { data, error } = await query;
   
+  // PERBAIKAN: Memberi tipe yang benar pada data
+  const inspections: Inspection[] = data || [];
+
   if (error) {
     console.error('Error loading casis data:', error.message);
     return <div className="p-6 text-red-500">Error loading data: {error.message}</div>;
@@ -77,7 +92,8 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                const hasError = item.inspection_results.some((result: any) => result.kondisi === 'tidak_baik');
+                // PERBAIKAN: Mengganti 'any' dengan tipe 'InspectionResult'
+                const hasError = item.inspection_results.some((result: InspectionResult) => result.kondisi === 'tidak_baik');
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{index + 1}</td>

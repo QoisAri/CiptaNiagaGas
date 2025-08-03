@@ -1,10 +1,9 @@
-'use client'; // Komponen ini interaktif, jadi kita gunakan 'use client'
+'use client';
 
-import { useState, useEffect, FormEvent } from 'react';
-// Pastikan path ini benar menuju file client Supabase Anda
+// PERBAIKAN: Mengimpor useCallback
+import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
-// Tipe data untuk objek storage
 type Storage = {
   id: number;
   storage_code: string;
@@ -13,7 +12,6 @@ type Storage = {
   created_at: string;
 };
 
-// Komponen Ikon (SVG) untuk UI
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
@@ -34,16 +32,15 @@ export default function DaftarStoragePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // State untuk form tambah data baru
   const [newStorageCode, setNewStorageCode] = useState('');
   const [newStorageType, setNewStorageType] = useState('');
   const [newStorageFeet, setNewStorageFeet] = useState<number | ''>('');
 
-  // Fungsi untuk mengambil semua data storage dari Supabase
-  const fetchStorages = async () => {
+  // PERBAIKAN: Membungkus fungsi dengan useCallback
+  const fetchStorages = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
-      .from('storages') // Menggunakan tabel 'storages'
+      .from('storages')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -54,14 +51,13 @@ export default function DaftarStoragePage() {
       setStorageList(data);
     }
     setIsLoading(false);
-  };
+  }, [supabase]);
 
-  // Jalankan fetchStorages() saat komponen pertama kali dimuat
+  // PERBAIKAN: Menambahkan fetchStorages ke dependency array
   useEffect(() => {
     fetchStorages();
-  }, []);
+  }, [fetchStorages]);
 
-  // Fungsi untuk menangani penambahan storage baru
   const handleAddStorage = async (e: FormEvent) => {
     e.preventDefault();
     if (!newStorageCode || !newStorageType || !newStorageFeet) {
@@ -70,7 +66,7 @@ export default function DaftarStoragePage() {
     }
 
     const { data, error } = await supabase
-      .from('storages') // Menggunakan tabel 'storages'
+      .from('storages')
       .insert([{ 
         storage_code: newStorageCode, 
         type: newStorageType, 
@@ -87,14 +83,13 @@ export default function DaftarStoragePage() {
     }
   };
 
-  // Fungsi untuk menghapus storage
   const handleDeleteStorage = async (id: number) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus storage ini?')) {
       return;
     }
 
     const { error } = await supabase
-      .from('storages') // Menggunakan tabel 'storages'
+      .from('storages')
       .delete()
       .match({ id: id });
 
@@ -166,7 +161,6 @@ export default function DaftarStoragePage() {
         </table>
       </div>
 
-      {/* Modal untuk Tambah Storage Baru */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">

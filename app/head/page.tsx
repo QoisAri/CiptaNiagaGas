@@ -1,8 +1,8 @@
+// PERBAIKAN: Mengimpor Link dari next/link
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddHeadButton } from './AddHeadButton';
 
-// Komponen FilterForm (tidak perlu diubah)
 function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?: string; pemeriksa?: string; }) {
   return (
     <form className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border items-end">
@@ -25,20 +25,31 @@ function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?:
       </div>
       <div className="flex space-x-2 col-span-1 md:col-span-2">
         <button type="submit" className="w-full inline-flex justify-center py-2 px-4 rounded-md text-white bg-indigo-600">Cari</button>
-        <a href="/head" className="w-full inline-flex justify-center py-2 px-4 rounded-md text-gray-700 bg-white border">Clear</a>
+        {/* PERBAIKAN: Mengganti <a> dengan <Link> */}
+        <Link href="/head" className="w-full inline-flex justify-center items-center py-2 px-4 rounded-md text-gray-700 bg-white border">Clear</Link>
       </div>
     </form>
   );
 }
 
-// Halaman Utama untuk Daftar Head
+// PERBAIKAN: Membuat tipe data yang lebih spesifik
+type InspectionResult = {
+  kondisi: string | null;
+};
+type Inspection = {
+  id: string;
+  tanggal: string;
+  heads: { head_code: string | null } | null;
+  profiles: { name: string | null } | null;
+  inspection_results: InspectionResult[];
+};
+
 export default async function HeadListPage({ searchParams }: { searchParams?: { feet?: string; head_code?: string; pemeriksa?: string; }; }) {
   const supabase = createClient();
   const feet = searchParams?.feet;
   const headCode = searchParams?.head_code;
   const pemeriksa = searchParams?.pemeriksa;
 
-  // PERBAIKAN: Menambahkan 'inspection_results(kondisi)' ke dalam select
   let query = supabase
     .from('inspections')
     .select('*, heads!inner(head_code, feet), profiles!inner(name), inspection_results(kondisi)')
@@ -49,7 +60,10 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
   if (headCode) query = query.ilike('heads.head_code', `%${headCode}%`);
   if (pemeriksa) query = query.ilike('profiles.name', `%${pemeriksa}%`);
 
-  const { data: inspections, error } = await query;
+  const { data, error } = await query;
+  
+  // PERBAIKAN: Memberi tipe yang benar pada data
+  const inspections: Inspection[] = data || [];
   
   if (error) {
     console.error('Error loading head data:', error.message);
@@ -81,12 +95,11 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                // PERBAIKAN: Logika untuk mengecek apakah ada kondisi 'tidak_baik'
+                // PERBAIKAN: Mengganti 'any' dengan tipe 'InspectionResult'
                 const hasError = item.inspection_results.some(
-                  (result: any) => result.kondisi === 'tidak_baik'
+                  (result: InspectionResult) => result.kondisi === 'tidak_baik'
                 );
                 return (
-                  // PERBAIKAN: Beri warna merah pada <tr> jika ada error
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">{item.heads?.head_code}</td>
