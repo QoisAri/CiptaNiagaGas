@@ -1,3 +1,5 @@
+// app/storage/[id]/page.tsx
+
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { StorageDetailClient } from './StorageDetailClient';
@@ -5,11 +7,12 @@ import { deleteInspection } from '@/app/storage/actions';
 
 export const dynamic = 'force-dynamic';
 
-// Tipe data untuk mempermudah
+// PERBAIKAN 1: Tambahkan 'standard' ke tipe Row
 type Row = { 
-  id: string; // item id
+  id: string; 
   name: string;
-  resultId: string | null; // result id
+  standard: string | null; // <-- Ditambahkan
+  resultId: string | null;
   kondisi: string;
   keterangan: string | null;
 };
@@ -21,12 +24,18 @@ export default async function StorageDetailPage({ params }: { params: { id: stri
 
   const { data: inspectionHeader, error } = await supabase
     .from('inspections')
-    .select(`*, storages ( storage_code, type ), profiles ( name )`)
-    .eq('id', inspectionId).single();
+    .select(`
+      *, 
+      storages!inspections_storage_id_fkey(storage_code, type), 
+      profiles!fk_inspector(name)
+    `)
+    .eq('id', inspectionId)
+    .single();
 
-  if (error || !inspectionHeader || !inspectionHeader.storages) return notFound();
+  if (error || !inspectionHeader || !inspectionHeader.storages) {
+    return notFound();
+  }
 
-  // Menggunakan metode 2-query yang andal
   const { data: allMasterItems } = await supabase
     .from('inspection_items')
     .select('*')
@@ -39,9 +48,11 @@ export default async function StorageDetailPage({ params }: { params: { id: stri
   
   const resultsMap = new Map((inspectionResults || []).map(r => [r.item_id, { id: r.id, kondisi: r.kondisi, keterangan: r.keterangan }]));
   
+  // PERBAIKAN 2: Sertakan 'standard' saat mapping data
   const itemsWithResults = (allMasterItems || []).map(item => ({
     id: item.id,
     name: item.name,
+    standard: item.standard, // <-- Ditambahkan
     page_title: item.page_title || 'Hasil Pengecekan',
     resultId: resultsMap.get(item.id)?.id || null,
     kondisi: resultsMap.get(item.id)?.kondisi || 'Belum Diperiksa',
@@ -52,14 +63,14 @@ export default async function StorageDetailPage({ params }: { params: { id: stri
   for (const item of itemsWithResults) {
     const pageTitle = item.page_title;
     if (!groups[pageTitle]) groups[pageTitle] = [];
-    groups[pageTitle].push(item);
+    groups[pageTitle].push(item as Row);
   }
 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Detail Pemeriksaan Storage {inspectionHeader.storages.storage_code}</h1>
       <StorageDetailClient 
-        inspectionHeader={inspectionHeader} 
+        inspectionHeader={inspectionHeader as any}
         groups={groups} 
         deleteAction={deleteInspection} 
       />

@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
-// PERBAIKAN: Menghapus 'deleteInspection' dan 'FormState' yang tidak terpakai
 import { upsertInspectionResult } from '@/app/storage/actions';
 import { FaPrint } from 'react-icons/fa';
 
@@ -12,19 +11,19 @@ import { FaPrint } from 'react-icons/fa';
 type Row = {
   id: string;
   name: string;
+  standard: string | null; // <-- PERBAIKAN 1: Menambahkan properti standard
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
 };
 type Group = Record<string, Row[]>;
 
-// PERBAIKAN: Tipe spesifik untuk inspectionHeader, menggantikan 'any'
 type InspectionHeaderType = {
   id: string;
   tanggal: string;
   catatan: string | null;
   profiles: { name: string; } | null;
-  storages: { storage_code: string; } | null; // Diubah dari chassis ke storages
+  storages: { storage_code: string; } | null;
 };
 
 type Props = { 
@@ -59,6 +58,8 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
   return (
     <tr>
       <td className="border border-black px-4 py-2 text-black">{row.name}</td>
+      {/* PERBAIKAN 3: Menambahkan sel data untuk kolom standard */}
+      <td className="border border-black px-4 py-2 text-black">{row.standard || '-'}</td>
       {isEditing ? (
         <>
           <td className="border border-black px-4 py-2 text-black">
@@ -147,6 +148,8 @@ export const StorageDetailClient = ({ inspectionHeader, groups, deleteAction }: 
                 <thead className="bg-gray-200">
                   <tr>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black w-1/3">Item</th>
+                    {/* PERBAIKAN 2: Menambahkan header kolom Standard */}
+                    <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
                     <th className="border border-black px-4 py-2 text-center font-bold text-black w-48 no-print">Aksi</th>

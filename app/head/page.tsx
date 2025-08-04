@@ -25,21 +25,19 @@ function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?:
       </div>
       <div className="flex space-x-2 col-span-1 md:col-span-2">
         <button type="submit" className="w-full inline-flex justify-center py-2 px-4 rounded-md text-white bg-indigo-600">Cari</button>
-        {/* PERBAIKAN: Mengganti <a> dengan <Link> */}
         <Link href="/head" className="w-full inline-flex justify-center items-center py-2 px-4 rounded-md text-gray-700 bg-white border">Clear</Link>
       </div>
     </form>
   );
 }
 
-// PERBAIKAN: Membuat tipe data yang lebih spesifik
 type InspectionResult = {
   kondisi: string | null;
 };
 type Inspection = {
   id: string;
   tanggal: string;
-  heads: { head_code: string | null } | null;
+  heads: { head_code: string | null, feet: number | null } | null;
   profiles: { name: string | null } | null;
   inspection_results: InspectionResult[];
 };
@@ -50,9 +48,10 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
   const headCode = searchParams?.head_code;
   const pemeriksa = searchParams?.pemeriksa;
 
+  // PERBAIKAN UTAMA: Gunakan nama foreign key constraint yang eksplisit
   let query = supabase
     .from('inspections')
-    .select('*, heads!inner(head_code, feet), profiles!inner(name), inspection_results(kondisi)')
+    .select('id, tanggal, heads!inspections_head_id_fkey!inner(head_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)')
     .not('head_id', 'is', null)
     .order('tanggal', { ascending: false });
 
@@ -62,8 +61,8 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
 
   const { data, error } = await query;
   
-  // PERBAIKAN: Memberi tipe yang benar pada data
-  const inspections: Inspection[] = data || [];
+  // Menggunakan type assertion untuk mencegah error "false positive" dari TypeScript
+  const inspections = (data as any) as Inspection[];
   
   if (error) {
     console.error('Error loading head data:', error.message);
@@ -95,7 +94,6 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                // PERBAIKAN: Mengganti 'any' dengan tipe 'InspectionResult'
                 const hasError = item.inspection_results.some(
                   (result: InspectionResult) => result.kondisi === 'tidak_baik'
                 );

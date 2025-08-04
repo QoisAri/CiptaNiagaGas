@@ -62,7 +62,6 @@ function FilterForm({
         <button type="submit" className="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
           Cari
         </button>
-        {/* PERBAIKAN: Mengganti <a> dengan <Link> */}
         <Link href="/storage" className="w-full inline-flex justify-center items-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
           Clear
         </Link>
@@ -71,7 +70,6 @@ function FilterForm({
   );
 }
 
-// PERBAIKAN: Membuat tipe data yang lebih spesifik
 type InspectionResult = {
   kondisi: string | null;
 };
@@ -97,9 +95,10 @@ export default async function StorageListPage({
   const feet = searchParams?.feet;
   const pemeriksa = searchParams?.pemeriksa;
   
+  // PERBAIKAN UTAMA: Tentukan foreign key constraint secara eksplisit
   let query = supabase
     .from('inspections')
-    .select('*, storages!inner(storage_code, feet), profiles!inner(name), inspection_results(kondisi)')
+    .select('id, tanggal, storages!inspections_storage_id_fkey!inner(storage_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)')
     .not('storage_id', 'is', null)
     .order('tanggal', { ascending: false });
 
@@ -115,8 +114,8 @@ export default async function StorageListPage({
 
   const { data, error } = await query;
   
-  // PERBAIKAN: Memberi tipe yang benar pada data
-  const inspections: Inspection[] = data || [];
+  // Menggunakan type assertion untuk mengatasi potensi ketidakcocokan tipe dari library
+  const inspections = (data as any) as Inspection[];
 
   if (error) {
     return <div className="p-6 text-red-500">Error: {error.message}</div>;
@@ -145,7 +144,6 @@ export default async function StorageListPage({
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                // PERBAIKAN: Mengganti 'any' dengan tipe 'InspectionResult'
                 const hasError = item.inspection_results.some((result: InspectionResult) => result.kondisi === 'tidak_baik');
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>

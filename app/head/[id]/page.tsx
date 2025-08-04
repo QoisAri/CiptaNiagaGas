@@ -1,3 +1,5 @@
+// app/head/[id]/page.tsx
+
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { InspectionDetailClient } from './InspectionDetailClient';
@@ -5,7 +7,7 @@ import { deleteInspection } from '@/app/head/actions';
 
 export const dynamic = 'force-dynamic';
 
-// Tipe data yang lebih spesifik
+// Tipe data dari kode lama Anda, dipertahankan
 type Row = { 
   id: string;
   name: string;
@@ -17,7 +19,6 @@ type Row = {
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
 
-// PERBAIKAN: Tipe untuk item dari tabel 'inspection_items'
 type InspectionItem = {
   id: string;
   name: string;
@@ -25,17 +26,14 @@ type InspectionItem = {
   parent_id: string | null;
   page_title: string | null;
   category: string | null;
-  // ... tambahkan properti lain jika ada
 };
 
-// PERBAIKAN: Tipe untuk item yang sudah digabung dengan hasil inspeksi
 type ItemWithResult = InspectionItem & {
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
 };
 
-// PERBAIKAN: Tipe untuk parent item
 type ParentItem = {
   id: string;
   name: string;
@@ -45,16 +43,23 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
   const inspectionId = params.id;
   const supabase = createClient();
 
+  // PERBAIKAN UTAMA: Menggunakan query join yang benar dan eksplisit
   const { data: inspectionHeader, error: headerError } = await supabase
     .from('inspections')
-    .select(`*, heads ( head_code, feet ), profiles ( name )`)
+    .select(`
+      *, 
+      heads!inspections_head_id_fkey(head_code, feet), 
+      profiles!fk_inspector(name)
+    `)
     .eq('id', inspectionId)
     .single();
 
+  // Logika penanganan error ini sekarang akan berfungsi dengan benar
   if (headerError || !inspectionHeader || !inspectionHeader.heads) {
     return notFound();
   }
 
+  // Semua logika pemrosesan data di bawah ini dipertahankan dari kode lama Anda
   const feet = inspectionHeader.heads.feet;
   
   const { data: allMasterItems, error: masterItemsError } = await supabase
@@ -79,7 +84,6 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     ])
   );
   
-  // PERBAIKAN: Menggunakan tipe 'ItemWithResult' yang sudah didefinisikan
   const itemsWithResults: ItemWithResult[] = (allMasterItems || []).map((item: InspectionItem) => {
     const result = resultsMap.get(item.id);
     return {
@@ -93,11 +97,9 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
   const groups: Group = {};
   const parentNameMap = new Map<string, string>();
   
-  // PERBAIKAN: Memberi tipe 'ItemWithResult' pada item saat mapping
   const parentIds = [...new Set(itemsWithResults.map((item: ItemWithResult) => item.parent_id).filter(Boolean))];
   if (parentIds.length > 0) {
-    const { data: parents } = await supabase.from('inspection_items').select('id, name').in('id', parentIds);
-    // PERBAIKAN: Memberi tipe 'ParentItem' pada 'p' saat forEach
+    const { data: parents } = await supabase.from('inspection_items').select('id, name').in('id', parentIds as string[]);
     (parents || []).forEach((p: ParentItem) => parentNameMap.set(p.id, p.name));
   }
 
@@ -133,7 +135,7 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Detail Pemeriksaan Head {inspectionHeader.heads.head_code} ({feet} Feet)</h1>
       <InspectionDetailClient
-        inspectionHeader={inspectionHeader}
+        inspectionHeader={inspectionHeader as any} // Menggunakan 'as any' untuk mengatasi potensi ketidakcocokan tipe minor
         groups={groups}
         deleteAction={deleteInspection}
       />

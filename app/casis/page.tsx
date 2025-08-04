@@ -1,9 +1,11 @@
-// PERBAIKAN: Mengimpor Link dari next/link
+// app/casis/page.tsx
+
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddCasisButton } from './AddCasisButton';
 
 function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_code?: string; pemeriksa?: string; }) {
+  // ... (FilterForm component remains unchanged)
   return (
     <form className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border items-end">
       <div>
@@ -24,21 +26,21 @@ function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_
       </div>
       <div className="flex space-x-2 col-span-1 md:col-span-2">
         <button type="submit" className="w-full inline-flex justify-center py-2 px-4 rounded-md text-white bg-indigo-600">Cari</button>
-        {/* PERBAIKAN: Mengganti tag <a> dengan komponen <Link> */}
         <Link href="/casis" className="w-full inline-flex justify-center items-center py-2 px-4 rounded-md text-gray-700 bg-white border">Clear</Link>
       </div>
     </form>
   );
 }
 
-// PERBAIKAN: Membuat tipe data yang lebih spesifik
 type InspectionResult = {
   kondisi: string | null;
 };
+
+// Tipe data ini SUDAH BENAR sesuai console.log
 type Inspection = {
   id: string;
   tanggal: string;
-  chassis: { chassis_code: string | null } | null;
+  chassis: { chassis_code: string | null; feet: string | null } | null;
   profiles: { name: string | null } | null;
   inspection_results: InspectionResult[];
 };
@@ -48,25 +50,31 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
   const feet = searchParams?.feet;
   const chassisCode = searchParams?.chassis_code;
   const pemeriksa = searchParams?.pemeriksa;
-
+  
   let query = supabase
     .from('inspections')
-    .select('*, chassis!inner(chassis_code, feet), profiles!inner(name), inspection_results(kondisi)')
+    .select('id, tanggal, chassis!inspections_chassis_id_fkey!inner(chassis_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)')
     .not('chassis_id', 'is', null)
     .order('tanggal', { ascending: false });
 
-  if (feet) query = query.eq('chassis.feet', feet);
-  if (chassisCode) query = query.ilike('chassis.chassis_code', `%${chassisCode}%`);
-  if (pemeriksa) query = query.ilike('profiles.name', `%${pemeriksa}%`);
+  if (feet) {
+    query = query.eq('chassis.feet', feet);
+  }
+  if (chassisCode) {
+    query = query.ilike('chassis.chassis_code', `%${chassisCode}%`);
+  }
+  if (pemeriksa) {
+    query = query.ilike('profiles.name', `%${pemeriksa}%`);
+  }
 
   const { data, error } = await query;
   
-  // PERBAIKAN: Memberi tipe yang benar pada data
-  const inspections: Inspection[] = data || [];
+  // PERBAIKAN FINAL: Gunakan type assertion untuk mengatasi error TypeScript
+  const inspections = (data as any) as Inspection[];
 
   if (error) {
     console.error('Error loading casis data:', error.message);
-    return <div className="p-6 text-red-500">Error loading data: {error.message}</div>;
+    return <div className="p-6 text-red-500">Terjadi kesalahan saat memuat data. Silakan coba lagi nanti.</div>;
   }
 
   return (
@@ -92,11 +100,11 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                // PERBAIKAN: Mengganti 'any' dengan tipe 'InspectionResult'
-                const hasError = item.inspection_results.some((result: InspectionResult) => result.kondisi === 'tidak_baik');
+                const hasError = item.inspection_results.some((result) => result.kondisi === 'tidak_baik');
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{index + 1}</td>
+                    {/* Cara menampilkan data ini SUDAH BENAR */}
                     <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.chassis?.chassis_code}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{item.profiles?.name}</td>
