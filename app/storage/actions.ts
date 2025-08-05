@@ -1,4 +1,4 @@
-// app/storage/actions.ts (atau path file actions Anda)
+// app/storage/actions.ts
 
 'use server';
 
@@ -7,17 +7,55 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import ExcelJS from 'exceljs';
 
-
 // =================================================================
 // TIPE DATA UNIVERSAL
 // =================================================================
 
-export type FormState = { 
-  message: string; 
-  success: boolean; 
-  error?: boolean; 
+export type FormState = {
+  message: string;
+  success: boolean;
+  error?: boolean;
 };
 
+// =================================================================
+// TIPE DATA SPESIFIK UNTUK LAPORAN
+// =================================================================
+
+// Tipe untuk data inspeksi yang digabung dengan tabel profiles
+type InspectionWithProfile = {
+  id: string;
+  storage_id: string | null;
+  tanggal: string | null;
+  profiles: {
+    name: string | null;
+  } | null;
+};
+
+// Tipe untuk data hasil inspeksi yang digabung dengan tabel inspection_items
+type ResultWithItem = {
+  id: string;
+  inspection_id: string;
+  item_id: string;
+  kondisi: string;
+  keterangan: string | null;
+  inspection_items: {
+    name: string | null;
+  } | null;
+};
+
+// Tipe data universal untuk baris laporan
+type StorageData = {
+  id: string;
+  tanggal: string | null;
+  storage_code: string | null;
+  feet: number | null;
+  pemeriksa: string | null;
+  kondisi: string | null;
+  keterangan: string | null;
+  item_name: string | null;
+  tgl_perbaikan: string | null;
+  tindakan: string | null;
+};
 
 // =================================================================
 // FUNGSI UNTUK AUTENTIKASI PENGGUNA
@@ -51,15 +89,19 @@ export async function signup(formData: FormData) {
     console.error('Signup Error:', error.message);
     return redirect('/signup?message=Gagal membuat akun.');
   }
-  return redirect('/login?message=Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.');
+  return redirect(
+    '/login?message=Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.'
+  );
 }
-
 
 // =================================================================
 // FUNGSI UNTUK MENAMBAH DATA MASTER (HEAD, CASIS, STORAGE)
 // =================================================================
 
-export async function addHead(prevState: FormState, formData: FormData): Promise<FormState> {
+export async function addHead(
+  prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
   const supabase = await createClient();
   const headCode = formData.get('head_code') as string;
   const type = formData.get('type') as string;
@@ -76,13 +118,20 @@ export async function addHead(prevState: FormState, formData: FormData): Promise
   });
 
   if (error) {
-    return { message: `Gagal menyimpan Head: ${error.message}`, success: false, error: true };
+    return {
+      message: `Gagal menyimpan Head: ${error.message}`,
+      success: false,
+      error: true,
+    };
   }
   revalidatePath('/head');
   return { message: 'Head baru berhasil ditambahkan!', success: true };
 }
 
-export async function addCasis(prevState: FormState, formData: FormData): Promise<FormState> {
+export async function addCasis(
+  prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
   const supabase = await createClient();
   const casisCode = formData.get('casis_code') as string;
   const type = formData.get('type') as string;
@@ -99,13 +148,20 @@ export async function addCasis(prevState: FormState, formData: FormData): Promis
   });
 
   if (error) {
-    return { message: `Gagal menyimpan Casis: ${error.message}`, success: false, error: true };
+    return {
+      message: `Gagal menyimpan Casis: ${error.message}`,
+      success: false,
+      error: true,
+    };
   }
   revalidatePath('/casis');
   return { message: 'Casis baru berhasil ditambahkan!', success: true };
 }
 
-export async function addStorage(prevState: FormState, formData: FormData): Promise<FormState> {
+export async function addStorage(
+  prevState: FormState,
+  formData: FormData
+): Promise<FormState> {
   const supabase = await createClient();
   const storageCode = formData.get('storage_code') as string;
   const type = formData.get('type') as string;
@@ -120,12 +176,15 @@ export async function addStorage(prevState: FormState, formData: FormData): Prom
   });
 
   if (error) {
-    return { message: `Gagal menyimpan Storage: ${error.message}`, success: false, error: true };
+    return {
+      message: `Gagal menyimpan Storage: ${error.message}`,
+      success: false,
+      error: true,
+    };
   }
   revalidatePath('/storage');
   return { message: 'Storage baru berhasil ditambahkan!', success: true };
 }
-
 
 // =================================================================
 // FUNGSI UNTUK MANAJEMEN INSPEKSI
@@ -138,7 +197,10 @@ export async function deleteInspection(formData: FormData) {
   if (!inspectionId || !redirectTo) return;
 
   const supabase = await createClient();
-  const { error } = await supabase.from('inspections').delete().eq('id', inspectionId);
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .eq('id', inspectionId);
 
   if (error) {
     console.error('Delete Inspection Error:', error);
@@ -167,13 +229,18 @@ export async function upsertInspectionResult(
     return { message: 'Data tidak lengkap.', success: false };
   }
 
-  if (data.resultId && data.resultId !== 'undefined' && data.resultId !== 'null') {
+  if (
+    data.resultId &&
+    data.resultId !== 'undefined' &&
+    data.resultId !== 'null'
+  ) {
     // UPDATE
     const { error } = await supabase
       .from('inspection_results')
       .update({ kondisi: data.kondisi, keterangan: data.keterangan })
       .eq('id', data.resultId);
-    if (error) return { message: `Gagal mengupdate: ${error.message}`, success: false };
+    if (error)
+      return { message: `Gagal mengupdate: ${error.message}`, success: false };
   } else {
     // INSERT
     const { error } = await supabase.from('inspection_results').insert({
@@ -182,71 +249,77 @@ export async function upsertInspectionResult(
       kondisi: data.kondisi,
       keterangan: data.keterangan,
     });
-    if (error) return { message: `Gagal menyimpan: ${error.message}`, success: false };
+    if (error)
+      return { message: `Gagal menyimpan: ${error.message}`, success: false };
   }
 
   revalidatePath(data.pathname);
   return { message: 'Data berhasil disimpan!', success: true };
 }
 
-
 // =================================================================
 // FUNGSI UNTUK MEMBUAT LAPORAN EXCEL
 // =================================================================
 
-type StorageData = {
-  id: string;
-  tanggal: string | null;
-  storage_code: string | null;
-  feet: number | null;
-  pemeriksa: string | null;
-  kondisi: string | null;
-  keterangan: string | null;
-  item_name: string | null;
-  tgl_perbaikan: string | null;
-  tindakan: string | null;
-};
-
-export async function generateStorageReport(reportType: 'checked' | 'problematic' | 'maintained') {
+export async function generateStorageReport(
+  reportType: 'checked' | 'problematic' | 'maintained'
+) {
   const supabase = await createClient();
   let reportData: StorageData[] = [];
-  let fileName = `laporan-storage-${reportType}.xlsx`;
+  // ✅ FIX 1: Ubah `let` menjadi `const`
+  const fileName = `laporan-storage-${reportType}-${new Date().toISOString().split('T')[0]}.xlsx`;
 
-  // Ambil semua data master yang dibutuhkan
+  // Ambil semua data master yang dibutuhkan dengan TIPE yang benar
+  // ✅ FIX 2: Memberi tahu Supabase tipe data yang diharapkan, menghilangkan kebutuhan `any`
   const { data: allStorages } = await supabase.from('storages').select('*');
-  const { data: allInspections } = await supabase.from('inspections').select('*, profiles(name)');
-  const { data: allResults } = await supabase.from('inspection_results').select('*, inspection_items(name)');
-  const { data: allMaintenance } = await supabase.from('maintenance_records').select('*');
+  const { data: allInspections } = await supabase
+    .from('inspections')
+    .select('*, profiles(name)')
+    .returns<InspectionWithProfile[]>();
+  const { data: allResults } = await supabase
+    .from('inspection_results')
+    .select('*, inspection_items(name)')
+    .returns<ResultWithItem[]>();
+  const { data: allMaintenance } = await supabase
+    .from('maintenance_records')
+    .select('*');
   const { data: allItems } = await supabase.from('inspection_items').select('*');
-
 
   if (!allStorages) {
     return { error: 'Gagal mengambil data master storage.' };
   }
 
-  // --- Logika yang sudah bekerja untuk 2 laporan pertama ---
   if (reportType === 'checked') {
-    reportData = allStorages.map(storage => {
-      const inspection = allInspections?.find(insp => insp.storage_id === storage.id);
+    reportData = allStorages.map((storage) => {
+      const inspection = allInspections?.find(
+        (insp) => insp.storage_id === storage.id
+      );
       return {
         id: storage.id,
         storage_code: storage.storage_code,
         feet: storage.feet,
         kondisi: inspection ? 'Sudah Dicek' : 'Belum Dicek',
         tanggal: inspection?.tanggal || null,
-        pemeriksa: (inspection as any)?.profiles?.name || null,
-        keterangan: null, item_name: null, tgl_perbaikan: null, tindakan: null
+        // ✅ FIX 2: `any` tidak lagi diperlukan karena tipe sudah benar
+        pemeriksa: inspection?.profiles?.name || null,
+        keterangan: null,
+        item_name: null,
+        tgl_perbaikan: null,
+        tindakan: null,
       };
     });
-  } 
-  else if (reportType === 'problematic') {
-    const problematicResults = allResults?.filter(res => res.kondisi === 'tidak_baik');
+  } else if (reportType === 'problematic') {
+    const problematicResults = allResults?.filter(
+      (res) => res.kondisi === 'tidak_baik'
+    );
     if (!problematicResults) return { error: 'Tidak ada data bermasalah.' };
-    
-    problematicResults.forEach(result => {
-      const inspection = allInspections?.find(insp => insp.id === result.inspection_id);
+
+    problematicResults.forEach((result) => {
+      const inspection = allInspections?.find(
+        (insp) => insp.id === result.inspection_id
+      );
       if (inspection && inspection.storage_id) {
-        const storage = allStorages?.find(s => s.id === inspection.storage_id);
+        const storage = allStorages?.find((s) => s.id === inspection.storage_id);
         if (storage) {
           reportData.push({
             id: storage.id,
@@ -254,29 +327,35 @@ export async function generateStorageReport(reportType: 'checked' | 'problematic
             feet: storage.feet,
             kondisi: result.kondisi,
             keterangan: result.keterangan,
-            item_name: (result as any).inspection_items?.name || 'Item tidak diketahui',
+            // ✅ FIX 2: `any` tidak lagi diperlukan
+            item_name: result.inspection_items?.name || 'Item tidak diketahui',
             tanggal: inspection.tanggal,
-            pemeriksa: (inspection as any)?.profiles?.name || null,
-            tgl_perbaikan: null, tindakan: null
+            // ✅ FIX 2: `any` tidak lagi diperlukan
+            pemeriksa: inspection?.profiles?.name || null,
+            tgl_perbaikan: null,
+            tindakan: null,
           });
         }
       }
     });
-  } 
-  // --- PERBAIKAN UTAMA HANYA DI SINI ---
-  else if (reportType === 'maintained') {
+  } else if (reportType === 'maintained') {
     if (!allMaintenance || allMaintenance.length === 0) {
       return { error: 'Tidak ada data perbaikan untuk dilaporkan.' };
     }
 
-    allMaintenance.forEach(maintenance => {
-      // Alur: maintenance -> result -> inspection -> storage
-      const result = allResults?.find(res => res.id === maintenance.inspection_result_id);
+    allMaintenance.forEach((maintenance) => {
+      const result = allResults?.find(
+        (res) => res.id === maintenance.inspection_result_id
+      );
       if (result) {
-        const inspection = allInspections?.find(insp => insp.id === result.inspection_id);
+        const inspection = allInspections?.find(
+          (insp) => insp.id === result.inspection_id
+        );
         if (inspection && inspection.storage_id) {
-          const storage = allStorages?.find(s => s.id === inspection.storage_id);
-          const item = allItems?.find(it => it.id === result.item_id);
+          const storage = allStorages?.find(
+            (s) => s.id === inspection.storage_id
+          );
+          const item = allItems?.find((it) => it.id === result.item_id);
           if (storage) {
             reportData.push({
               id: storage.id,
@@ -285,27 +364,31 @@ export async function generateStorageReport(reportType: 'checked' | 'problematic
               tgl_perbaikan: maintenance.repaired_at,
               tindakan: maintenance.notes,
               item_name: item?.name || 'Item tidak diketahui',
-              tanggal: inspection.tanggal, // Tanggal inspeksi awal
-              pemeriksa: (inspection as any)?.profiles?.name || null, // Pemeriksa inspeksi awal
-              kondisi: null, keterangan: null
+              tanggal: inspection.tanggal,
+              // ✅ FIX 2: `any` tidak lagi diperlukan
+              pemeriksa: inspection?.profiles?.name || null,
+              kondisi: null,
+              keterangan: null,
             });
           }
         }
       }
     });
   }
-  
+
   if (reportData.length === 0) {
     return { error: 'Tidak ada data untuk dilaporkan.' };
   }
 
-  // --- Kode pembuatan Excel tidak berubah ---
-  const groupedByFeet: Record<string, StorageData[]> = reportData.reduce((acc, item) => {
-    const feet = item.feet ? `${item.feet} Feet` : 'Ukuran Tidak Diketahui';
-    if (!acc[feet]) acc[feet] = [];
-    acc[feet].push(item);
-    return acc;
-  }, {} as Record<string, StorageData[]>);
+  const groupedByFeet: Record<string, StorageData[]> = reportData.reduce(
+    (acc, item) => {
+      const feet = item.feet ? `${item.feet} Feet` : 'Ukuran Tidak Diketahui';
+      if (!acc[feet]) acc[feet] = [];
+      acc[feet].push(item);
+      return acc;
+    },
+    {} as Record<string, StorageData[]>
+  );
 
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'CNG Application';
@@ -317,10 +400,15 @@ export async function generateStorageReport(reportType: 'checked' | 'problematic
     { header: 'Pemeriksa', key: 'pemeriksa', width: 25 },
     { header: 'Tanggal Inspeksi', key: 'tanggal', width: 20 },
   ];
-  
-  let headersConfig = [...baseHeaders];
+
+  // ✅ FIX 1: Ubah `let` menjadi `const`
+  const headersConfig = [...baseHeaders];
   if (reportType === 'checked') {
-    headersConfig.push({ header: 'Status Pengecekan', key: 'kondisi', width: 25 });
+    headersConfig.push({
+      header: 'Status Pengecekan',
+      key: 'kondisi',
+      width: 25,
+    });
   } else if (reportType === 'problematic') {
     headersConfig.push(
       { header: 'Nama Item', key: 'item_name', width: 30 },
@@ -328,27 +416,32 @@ export async function generateStorageReport(reportType: 'checked' | 'problematic
       { header: 'Keterangan', key: 'keterangan', width: 40 }
     );
   } else if (reportType === 'maintained') {
-     headersConfig.push(
+    headersConfig.push(
       { header: 'Nama Item Bermasalah', key: 'item_name', width: 30 },
       { header: 'Tanggal Perbaikan', key: 'tgl_perbaikan', width: 25 },
       { header: 'Tindakan Perbaikan', key: 'tindakan', width: 40 }
     );
   }
-  
+
   for (const feetGroup in groupedByFeet) {
     const worksheet = workbook.addWorksheet(feetGroup);
     worksheet.columns = headersConfig;
-    
+
     groupedByFeet[feetGroup].forEach((item, index) => {
       worksheet.addRow({
         no: index + 1,
         storage_code: item.storage_code,
         pemeriksa: item.pemeriksa,
-        tanggal: item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '',
-        kondisi: reportType === 'checked' ? (item.kondisi || 'Belum Dicek') : item.kondisi,
+        tanggal: item.tanggal
+          ? new Date(item.tanggal).toLocaleDateString('id-ID')
+          : '',
+        kondisi:
+          reportType === 'checked' ? item.kondisi || 'Belum Dicek' : item.kondisi,
         item_name: item.item_name,
         keterangan: item.keterangan,
-        tgl_perbaikan: item.tgl_perbaikan ? new Date(item.tgl_perbaikan).toLocaleDateString('id-ID') : '',
+        tgl_perbaikan: item.tgl_perbaikan
+          ? new Date(item.tgl_perbaikan).toLocaleDateString('id-ID')
+          : '',
         tindakan: item.tindakan,
       });
     });
@@ -362,7 +455,8 @@ export async function generateStorageReport(reportType: 'checked' | 'problematic
       };
     });
   }
-  
+
   const buffer = await workbook.xlsx.writeBuffer();
-  return { file: Buffer.from(buffer).toString('base64') };
+  // ✅ FIX 3: Kembalikan juga `fileName` agar bisa digunakan di komponen client
+  return { file: Buffer.from(buffer).toString('base64'), fileName: fileName };
 }
