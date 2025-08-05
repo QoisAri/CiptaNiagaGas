@@ -1,4 +1,3 @@
-
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { CasisDetailClient } from './CasisDetailClient';
@@ -6,9 +5,9 @@ import { deleteInspection } from '@/app/casis/actions';
 
 export const dynamic = 'force-dynamic';
 
-type PageProps = {
+interface PageProps {
   params: { id: string };
-};
+}
 
 type Row = {
   id: string;
@@ -22,7 +21,7 @@ type Row = {
 
 export default async function Page({ params }: PageProps) {
   const inspectionId = params.id;
-  const supabase = await createClient();
+  const supabase =await  createClient();
 
   const { data, error: headerError } = await supabase
     .from('inspections')
@@ -72,7 +71,7 @@ export default async function Page({ params }: PageProps) {
     };
   });
 
-  const groups = {} as Record<string, { parentName: string; rows: Row[] }[]>;
+  const groups: Record<string, { parentName: string; rows: Row[] }[]> = {};
   const parentNameMap = new Map<string, string>();
   const parentIds = [
     ...new Set(itemsWithResults.map((item) => item.parent_id).filter(Boolean)),
@@ -100,7 +99,7 @@ export default async function Page({ params }: PageProps) {
       groups[pageTitle].push(subGroup);
     }
 
-    const rowData = {
+    const rowData: Row = {
       id: item.id,
       name: item.name,
       standard: item.standard,
