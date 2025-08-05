@@ -81,4 +81,4 @@ export default async function CasisDetailPage({ params }: { params: { id: string
       <CasisDetailClient inspectionHeader={inspectionHeader} groups={groups} deleteAction={deleteInspection} />
     </div>
   );
-}
+} 
