@@ -5,10 +5,6 @@ import { deleteInspection } from '@/app/casis/actions';
 
 export const dynamic = 'force-dynamic';
 
-interface PageProps {
-  params: { id: string };
-}
-
 type Row = {
   id: string;
   name: string;
@@ -19,7 +15,7 @@ type Row = {
   problem_photo_url: string | null;
 };
 
-export default async function Page({ params }: PageProps) {
+export default async function Page({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
   const supabase =await  createClient();
 
