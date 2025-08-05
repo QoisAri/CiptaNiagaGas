@@ -18,7 +18,11 @@ type InspectionHeaderWithRelations = { id: string; tanggal: string; catatan: str
 
 // ❌ HAPUS 'interface PageProps'
 // ✅ GANTI DENGAN DEFINISI LANGSUNG DI FUNGSI
-export default async function CasisDetailPage({ params }: { params: { id: string } }) {
+export default async function CasisDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
   const inspectionId = params.id;
   const supabase = await createClient();
 
