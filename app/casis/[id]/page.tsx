@@ -1,5 +1,3 @@
-// app/casis/[id]/page.tsx
-
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { CasisDetailClient } from './CasisDetailClient';
@@ -7,7 +5,16 @@ import { deleteInspection } from '@/app/casis/actions';
 
 export const dynamic = 'force-dynamic';
 
-// ✅ TIDAK PERLU bikin interface PageProps
+type Row = {
+  id: string;
+  name: string;
+  standard: string | null;
+  resultId: string | null;
+  kondisi: string;
+  keterangan: string | null;
+  problem_photo_url: string | null;
+};
+
 export default async function Page({
   params,
 }: {
@@ -64,7 +71,7 @@ export default async function Page({
     };
   });
 
-  const groups = {} as Record<string, { parentName: string; rows: any[] }[]>;
+  const groups: Record<string, { parentName: string; rows: Row[] }[]> = {};
   const parentNameMap = new Map<string, string>();
   const parentIds = [
     ...new Set(itemsWithResults.map((item) => item.parent_id).filter(Boolean)),
@@ -92,7 +99,7 @@ export default async function Page({
       groups[pageTitle].push(subGroup);
     }
 
-    const rowData = {
+    const rowData: Row = {
       id: item.id,
       name: item.name,
       standard: item.standard,
@@ -112,8 +119,7 @@ export default async function Page({
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">
-        Detail Pemeriksaan Casis {inspectionHeader.chassis.chassis_code} (
-        {feet} Feet)
+        Detail Pemeriksaan Casis {inspectionHeader.chassis.chassis_code} ({feet} Feet)
       </h1>
       <CasisDetailClient
         inspectionHeader={inspectionHeader}
