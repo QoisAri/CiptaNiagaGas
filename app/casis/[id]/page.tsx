@@ -1,3 +1,5 @@
+// app/casis/[id]/page.tsx
+
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { CasisDetailClient } from './CasisDetailClient';
@@ -5,7 +7,12 @@ import { deleteInspection } from '@/app/casis/actions';
 
 export const dynamic = 'force-dynamic';
 
-// Tipe data detail
+// Mendefinisikan tipe props dengan nama unik untuk menghindari konflik
+type CasisPageProps = {
+  params: { id: string };
+};
+
+// Tipe data lain yang dibutuhkan oleh komponen
 type Row = {
   id: string;
   name: string;
@@ -31,8 +38,6 @@ type ItemWithResult = InspectionItem & {
   problem_photo_url: string | null;
 };
 type ParentItem = { id: string; name: string };
-
-// Tipe yang lebih spesifik untuk data dari Supabase
 type InspectionHeaderWithRelations = {
   id: string;
   tanggal: string;
@@ -46,9 +51,8 @@ type InspectionHeaderWithRelations = {
   profiles: { name: string } | null;
 };
 
-// ✅ PERBAIKAN: Mendefinisikan tipe props secara inline di dalam parameter fungsi.
-// Ini adalah cara yang paling aman dan jelas untuk TypeScript di Next.js App Router.
-export default async function CasisDetailPage({ params }: { params: { id: string } }) {
+// Menggunakan tipe CasisPageProps yang sudah didefinisikan
+export default async function CasisDetailPage({ params }: CasisPageProps) {
   const inspectionId = params.id;
   const supabase = await createClient();
 
@@ -60,7 +64,6 @@ export default async function CasisDetailPage({ params }: { params: { id: string
     .eq('id', inspectionId)
     .single();
 
-  // Memberi tipe yang benar pada data yang diambil
   const inspectionHeader: InspectionHeaderWithRelations | null = data;
 
   if (headerError || !inspectionHeader || !inspectionHeader.chassis) {
@@ -68,14 +71,14 @@ export default async function CasisDetailPage({ params }: { params: { id: string
   }
 
   const feet = inspectionHeader.chassis.feet;
-
-  // Pola pencarian ini mungkin perlu disesuaikan jika tidak sesuai harapan
   const searchPattern = `%(C${feet})`;
+  
   const { data: allMasterItems } = await supabase
     .from('inspection_items')
     .select('*')
     .eq('category', 'Chassis')
     .ilike('name', searchPattern);
+    
   const { data: inspectionResults } = await supabase
     .from('inspection_results')
     .select('id, item_id, kondisi, keterangan, problem_photo_url')
@@ -108,7 +111,6 @@ export default async function CasisDetailPage({ params }: { params: { id: string
 
   const groups: Group = {};
   const parentNameMap = new Map<string, string>();
-
   const parentIds = [
     ...new Set(itemsWithResults.map((item) => item.parent_id).filter(Boolean)),
   ];
