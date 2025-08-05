@@ -34,7 +34,7 @@ type PageProps = {
 
 export default async function CasisDetailPage({ params }: PageProps): Promise<JSX.Element> {
   const inspectionId = params.id;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error: headerError } = await supabase
     .from('inspections')

@@ -210,7 +210,7 @@ type StorageData = {
 export async function generateStorageReport(reportType: 'checked' | 'problematic' | 'maintained') {
   const supabase = await createClient();
   let reportData: StorageData[] = [];
-  const fileName = `laporan-storage-${reportType}.xlsx`;
+  let fileName = `laporan-storage-${reportType}.xlsx`;
 
   // Ambil semua data master yang dibutuhkan
   const { data: allStorages } = await supabase.from('storages').select('*');

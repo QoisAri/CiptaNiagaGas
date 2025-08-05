@@ -14,7 +14,7 @@ export type FormState = { message: string; success: boolean, error?: boolean };
 export async function login(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return redirect('/login?message=Email atau password salah.');
@@ -25,7 +25,7 @@ export async function signup(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirm_password') as string;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   if (password !== confirmPassword) return redirect('/signup?message=Password tidak cocok.');
 
@@ -46,7 +46,7 @@ export async function addCasis(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const casisCode = formData.get('casis_code') as string;
   const type = formData.get('type') as string;
@@ -89,7 +89,7 @@ export async function deleteInspection(formData: FormData) {
     return;
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from('inspections')
     .delete()
@@ -112,7 +112,7 @@ export async function upsertInspectionResult(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const data = {
     resultId: formData.get('resultId') as string,

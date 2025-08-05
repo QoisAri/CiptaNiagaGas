@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 // PERBAIKAN: 'useActionState' dari 'react', 'useFormStatus' dari 'react-dom'
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
-import { addStorage, type FormState } from './actions';
+import { addStorage, type FormState } from '@/app/storage/actions';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
