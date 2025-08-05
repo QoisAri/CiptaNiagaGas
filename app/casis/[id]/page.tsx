@@ -1,4 +1,4 @@
-// app/casis/[id]/page.tsx
+'use server';
 
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
@@ -7,7 +7,10 @@ import { deleteInspection } from '@/app/casis/actions';
 
 export const dynamic = 'force-dynamic';
 
-// ✅ TIDAK PERLU bikin interface PageProps
+type PageProps = {
+  params: { id: string };
+};
+
 type Row = {
   id: string;
   name: string;
@@ -18,11 +21,7 @@ type Row = {
   problem_photo_url: string | null;
 };
 
-export default async function Page({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function Page({ params }: PageProps) {
   const inspectionId = params.id;
   const supabase = await createClient();
 
