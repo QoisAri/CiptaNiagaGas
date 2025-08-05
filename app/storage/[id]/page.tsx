@@ -7,14 +7,15 @@ import { deleteInspection } from '@/app/storage/actions';
 
 export const dynamic = 'force-dynamic';
 
-// PERBAIKAN 1: Tambahkan 'standard' ke tipe Row
+// PERBAIKAN 1: Tambahkan 'problem_photo_url' ke tipe Row
 type Row = { 
   id: string; 
   name: string;
-  standard: string | null; // <-- Ditambahkan
+  standard: string | null;
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
+  problem_photo_url: string | null; // <-- Ditambahkan
 };
 type Group = Record<string, Row[]>;
 
@@ -41,22 +42,32 @@ export default async function StorageDetailPage({ params }: { params: { id: stri
     .select('*')
     .eq('category', 'Storage');
 
+  // PERBAIKAN 2: Ambil 'problem_photo_url' dari database
   const { data: inspectionResults } = await supabase
     .from('inspection_results')
-    .select('id, item_id, kondisi, keterangan')
+    .select('id, item_id, kondisi, keterangan, problem_photo_url') // <-- Ditambahkan
     .eq('inspection_id', inspectionId);
   
-  const resultsMap = new Map((inspectionResults || []).map(r => [r.item_id, { id: r.id, kondisi: r.kondisi, keterangan: r.keterangan }]));
+  const resultsMap = new Map((inspectionResults || []).map(r => [
+    r.item_id, 
+    { 
+      id: r.id, 
+      kondisi: r.kondisi, 
+      keterangan: r.keterangan,
+      problem_photo_url: r.problem_photo_url // <-- Ditambahkan
+    }
+  ]));
   
-  // PERBAIKAN 2: Sertakan 'standard' saat mapping data
+  // PERBAIKAN 3: Sertakan 'problem_photo_url' saat mapping data
   const itemsWithResults = (allMasterItems || []).map(item => ({
     id: item.id,
     name: item.name,
-    standard: item.standard, // <-- Ditambahkan
+    standard: item.standard,
     page_title: item.page_title || 'Hasil Pengecekan',
     resultId: resultsMap.get(item.id)?.id || null,
     kondisi: resultsMap.get(item.id)?.kondisi || 'Belum Diperiksa',
     keterangan: resultsMap.get(item.id)?.keterangan || '-',
+    problem_photo_url: resultsMap.get(item.id)?.problem_photo_url || null, // <-- Ditambahkan
   }));
 
   const groups: Group = {};

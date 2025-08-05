@@ -4,12 +4,11 @@ import React, { useState, useEffect } from 'react';
 import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { upsertInspectionResult } from '@/app/casis/actions'; // Pastikan path ini benar
+import { upsertInspectionResult } from '@/app/casis/actions';
 import { FaPrint, FaImage } from 'react-icons/fa';
 import Image from 'next/image';
 
-
-// PERBAIKAN 1: Tambahkan 'problem_photo_url' ke tipe Row
+// Tipe data tidak berubah
 type Row = {
   id: string;
   name: string;
@@ -17,7 +16,7 @@ type Row = {
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
-  problem_photo_url: string | null; // <-- Ditambahkan
+  problem_photo_url: string | null;
 };
 type Group = Record<string, SubGroup[]>;
 type SubGroup = { parentName: string; rows: Row[] };
@@ -36,7 +35,6 @@ type Props = {
   deleteAction: (formData: FormData) => void; 
 };
 
-// ... (Komponen SubmitButton tidak berubah)
 function SubmitButton({ onCancel }: { onCancel: () => void }) {
   const { pending } = useFormStatus();
   return (
@@ -44,106 +42,84 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
       <button type="submit" disabled={pending} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-md text-sm">
         {pending ? 'Menyimpan...' : 'Simpan'}
       </button>
-      <button type="button" onClick={onCancel} disabled={pending} className="bg-gray-200 hover:bg-gray-300 text-black font-semibold py-1 px-3 rounded-md text-sm">
+      <button type="button" onClick={() => onCancel()} disabled={pending} className="bg-gray-200 hover:bg-gray-300 text-black font-semibold py-1 px-3 rounded-md text-sm">
         Batal
       </button>
     </>
   );
 }
 
-
-function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: string, pathname: string }) {
+// PERBAIKAN 1: ItemRow menjadi lebih sederhana
+// Logika modal (useState) dihapus dari sini dan dipindahkan ke CasisDetailClient
+function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspectionId: string, pathname: string, onShowImage: (url: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const [formState, formAction] = useActionState(upsertInspectionResult, { message: '', success: false });
   const formId = `form-${row.id}`;
 
   useEffect(() => {
     if (formState.success) setIsEditing(false);
   }, [formState]);
+  
+  const cleanedUrl = row.problem_photo_url?.replace(/([^:]\/)\/+/g, "$1") || '';
 
   return (
-    <>
-      {/* Modal untuk menampilkan gambar */}
-      {showModal && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"
-          onClick={() => setShowModal(false)}
-        >
-          <div className="relative p-4">
-            <button 
-              onClick={() => setShowModal(false)} 
-              className="absolute -top-10 -right-4 text-white text-3xl font-bold"
-            >
-              &times;
-            </button>
-            <Image 
-              src={row.problem_photo_url!} 
-              alt={`Problem photo for ${row.name}`}
-              width={800}
-              height={600}
-              className="max-w-screen-lg max-h-screen-lg object-contain"
-            />
-          </div>
-        </div>
+    // <> dan Modal <div> dihapus dari sini
+    <tr>
+      <td className="border border-black px-4 py-2 text-black">{row.name}</td>
+      <td className="border border-black px-4 py-2 text-black">{row.standard || '-'}</td>
+      {isEditing ? (
+        <>
+          <td className="border border-black px-4 py-2 text-black">
+            <select name="kondisi" form={formId} defaultValue={row.kondisi !== 'Belum Diperiksa' ? row.kondisi : 'baik'} className="w-full p-1 border rounded-md">
+              <option value="baik">Baik</option>
+              <option value="tidak_baik">Tidak Baik</option>
+            </select>
+          </td>
+          <td className="border border-black px-4 py-2 text-black">
+            <input type="text" name="keterangan" form={formId} defaultValue={row.keterangan || ''} className="w-full p-1 border rounded-md" placeholder="Keterangan..." />
+          </td>
+        </>
+      ) : (
+        <>
+          <td className="border border-black px-4 py-2 text-black">{row.kondisi}</td>
+          <td className="border border-black px-4 py-2 text-black">{row.keterangan}</td>
+        </>
       )}
-
-      <tr>
-        <td className="border border-black px-4 py-2 text-black">{row.name}</td>
-        <td className="border border-black px-4 py-2 text-black">{row.standard || '-'}</td>
-        {isEditing ? (
-          <>
-            <td className="border border-black px-4 py-2 text-black">
-              <select name="kondisi" form={formId} defaultValue={row.kondisi !== 'Belum Diperiksa' ? row.kondisi : 'baik'} className="w-full p-1 border rounded-md">
-                <option value="baik">Baik</option>
-                <option value="tidak_baik">Tidak Baik</option>
-              </select>
-            </td>
-            <td className="border border-black px-4 py-2 text-black">
-              <input type="text" name="keterangan" form={formId} defaultValue={row.keterangan || ''} className="w-full p-1 border rounded-md" placeholder="Keterangan..." />
-            </td>
-          </>
+      
+      <td className="border border-black px-4 py-2 text-center">
+        {row.problem_photo_url ? (
+          // Tombol ini sekarang memanggil fungsi dari parent
+          <button onClick={() => onShowImage(cleanedUrl)} className="text-blue-600 hover:underline">
+            <FaImage className="inline-block h-5 w-5" />
+          </button>
         ) : (
-          <>
-            <td className="border border-black px-4 py-2 text-black">{row.kondisi}</td>
-            <td className="border border-black px-4 py-2 text-black">{row.keterangan}</td>
-          </>
+          '-'
         )}
-        
-        {/* PERBAIKAN 3: Menambahkan sel untuk foto */}
-        <td className="border border-black px-4 py-2 text-center">
-          {row.problem_photo_url ? (
-            <button onClick={() => setShowModal(true)} className="text-blue-600 hover:underline">
-              <FaImage className="inline-block h-5 w-5" />
-            </button>
-          ) : (
-            '-'
-          )}
-        </td>
+      </td>
 
-        <td className="border border-black px-4 py-2 text-center space-x-2 no-print">
-          {isEditing ? (
-            <form id={formId} action={formAction}>
-              <input type="hidden" name="resultId" value={row.resultId || undefined} />
-              <input type="hidden" name="itemId" value={row.id} />
-              <input type="hidden" name="inspectionId" value={inspectionId} />
-              <input type="hidden" name="pathname" value={pathname} />
-              <SubmitButton onCancel={() => setIsEditing(false)} />
-            </form>
-          ) : (
-            <button type="button" onClick={() => setIsEditing(true)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-md text-sm">
-              Edit
-            </button>
-          )}
-        </td>
-      </tr>
-    </>
+      <td className="border border-black px-4 py-2 text-center space-x-2 no-print">
+        {isEditing ? (
+          <form id={formId} action={formAction}>
+            <input type="hidden" name="resultId" value={row.resultId || undefined} />
+            <input type="hidden" name="itemId" value={row.id} />
+            <input type="hidden" name="inspectionId" value={inspectionId} />
+            <input type="hidden" name="pathname" value={pathname} />
+            <SubmitButton onCancel={() => setIsEditing(false)} />
+          </form>
+        ) : (
+          <button type="button" onClick={() => setIsEditing(true)} className="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-1 px-3 rounded-md text-sm">
+            Edit
+          </button>
+        )}
+      </td>
+    </tr>
   );
 }
 
-// ... (Komponen CasisDetailClient)
 export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Props) {
   const pathname = usePathname();
+  // PERBAIKAN 2: State untuk modal sekarang ada di sini
+  const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
 
   const handlePrint = () => {
     window.print();
@@ -161,7 +137,6 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
       `}</style>
 
       <div className="space-y-6 print-area">
-        {/* ... (bagian header informasi tidak berubah) ... */}
         <div className="bg-white shadow rounded p-4">
           <div className="flex justify-between items-start">
             <div>
@@ -200,14 +175,14 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
                         <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
                         <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
                         <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
-                        {/* PERBAIKAN 2: Menambahkan header kolom Foto */}
                         <th className="border border-black px-4 py-2 text-center font-bold text-black">Foto</th>
                         <th className="border border-black px-4 py-2 text-center font-bold text-black w-48 no-print">Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
                       {subGroup.rows.map((row) => (
-                        <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} />
+                        // ItemRow sekarang menerima prop onShowImage
+                        <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} onShowImage={setModalImageUrl} />
                       ))}
                     </tbody>
                   </table>
@@ -217,6 +192,30 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
           </div>
         ))}
       </div>
+
+      {/* PERBAIKAN 3: Elemen <div> modal sekarang ada di sini, di luar tabel */}
+      {modalImageUrl && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"
+          onClick={() => setModalImageUrl(null)}
+        >
+          <div className="relative p-4">
+            <button 
+              onClick={() => setModalImageUrl(null)}
+              className="absolute -top-10 -right-4 text-white text-3xl font-bold"
+            >
+              &times;
+            </button>
+            <Image 
+              src={modalImageUrl}
+              alt="Problem photo"
+              width={800}
+              height={600}
+              className="max-w-screen-lg max-h-screen-lg object-contain"
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 };

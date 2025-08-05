@@ -1,10 +1,18 @@
+// app/storage/actions.ts (atau path file actions Anda)
+
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import ExcelJS from 'exceljs';
+import { headers } from 'next/headers';
 
-// Tipe data universal untuk state form
+
+// =================================================================
+// TIPE DATA UNIVERSAL
+// =================================================================
+
 export type FormState = { 
   message: string; 
   success: boolean; 
@@ -124,9 +132,6 @@ export async function addStorage(prevState: FormState, formData: FormData): Prom
 // FUNGSI UNTUK MANAJEMEN INSPEKSI
 // =================================================================
 
-/**
- * Aksi untuk MENGHAPUS seluruh record inspeksi (bisa untuk Head, Casis, Storage).
- */
 export async function deleteInspection(formData: FormData) {
   const inspectionId = formData.get('inspectionId') as string;
   const redirectTo = formData.get('redirectTo') as string;
@@ -144,9 +149,6 @@ export async function deleteInspection(formData: FormData) {
   redirect(redirectTo);
 }
 
-/**
- * Aksi untuk MEMBUAT atau MENGUPDATE satu baris hasil inspeksi.
- */
 export async function upsertInspectionResult(
   prevState: FormState,
   formData: FormData
@@ -186,4 +188,182 @@ export async function upsertInspectionResult(
 
   revalidatePath(data.pathname);
   return { message: 'Data berhasil disimpan!', success: true };
+}
+
+
+// =================================================================
+// FUNGSI UNTUK MEMBUAT LAPORAN EXCEL
+// =================================================================
+
+type StorageData = {
+  id: string;
+  tanggal: string | null;
+  storage_code: string | null;
+  feet: number | null;
+  pemeriksa: string | null;
+  kondisi: string | null;
+  keterangan: string | null;
+  item_name: string | null;
+  tgl_perbaikan: string | null;
+  tindakan: string | null;
+};
+
+export async function generateStorageReport(reportType: 'checked' | 'problematic' | 'maintained') {
+  const supabase = createClient();
+  let reportData: StorageData[] = [];
+  let fileName = `laporan-storage-${reportType}.xlsx`;
+
+  // Ambil semua data master yang dibutuhkan
+  const { data: allStorages } = await supabase.from('storages').select('*');
+  const { data: allInspections } = await supabase.from('inspections').select('*, profiles(name)');
+  const { data: allResults } = await supabase.from('inspection_results').select('*, inspection_items(name)');
+  const { data: allMaintenance } = await supabase.from('maintenance_records').select('*');
+  const { data: allItems } = await supabase.from('inspection_items').select('*');
+
+
+  if (!allStorages) {
+    return { error: 'Gagal mengambil data master storage.' };
+  }
+
+  // --- Logika yang sudah bekerja untuk 2 laporan pertama ---
+  if (reportType === 'checked') {
+    reportData = allStorages.map(storage => {
+      const inspection = allInspections?.find(insp => insp.storage_id === storage.id);
+      return {
+        id: storage.id,
+        storage_code: storage.storage_code,
+        feet: storage.feet,
+        kondisi: inspection ? 'Sudah Dicek' : 'Belum Dicek',
+        tanggal: inspection?.tanggal || null,
+        pemeriksa: (inspection as any)?.profiles?.name || null,
+        keterangan: null, item_name: null, tgl_perbaikan: null, tindakan: null
+      };
+    });
+  } 
+  else if (reportType === 'problematic') {
+    const problematicResults = allResults?.filter(res => res.kondisi === 'tidak_baik');
+    if (!problematicResults) return { error: 'Tidak ada data bermasalah.' };
+    
+    problematicResults.forEach(result => {
+      const inspection = allInspections?.find(insp => insp.id === result.inspection_id);
+      if (inspection && inspection.storage_id) {
+        const storage = allStorages?.find(s => s.id === inspection.storage_id);
+        if (storage) {
+          reportData.push({
+            id: storage.id,
+            storage_code: storage.storage_code,
+            feet: storage.feet,
+            kondisi: result.kondisi,
+            keterangan: result.keterangan,
+            item_name: (result as any).inspection_items?.name || 'Item tidak diketahui',
+            tanggal: inspection.tanggal,
+            pemeriksa: (inspection as any)?.profiles?.name || null,
+            tgl_perbaikan: null, tindakan: null
+          });
+        }
+      }
+    });
+  } 
+  // --- PERBAIKAN UTAMA HANYA DI SINI ---
+  else if (reportType === 'maintained') {
+    if (!allMaintenance || allMaintenance.length === 0) {
+      return { error: 'Tidak ada data perbaikan untuk dilaporkan.' };
+    }
+
+    allMaintenance.forEach(maintenance => {
+      // Alur: maintenance -> result -> inspection -> storage
+      const result = allResults?.find(res => res.id === maintenance.inspection_result_id);
+      if (result) {
+        const inspection = allInspections?.find(insp => insp.id === result.inspection_id);
+        if (inspection && inspection.storage_id) {
+          const storage = allStorages?.find(s => s.id === inspection.storage_id);
+          const item = allItems?.find(it => it.id === result.item_id);
+          if (storage) {
+            reportData.push({
+              id: storage.id,
+              storage_code: storage.storage_code,
+              feet: storage.feet,
+              tgl_perbaikan: maintenance.repaired_at,
+              tindakan: maintenance.notes,
+              item_name: item?.name || 'Item tidak diketahui',
+              tanggal: inspection.tanggal, // Tanggal inspeksi awal
+              pemeriksa: (inspection as any)?.profiles?.name || null, // Pemeriksa inspeksi awal
+              kondisi: null, keterangan: null
+            });
+          }
+        }
+      }
+    });
+  }
+  
+  if (reportData.length === 0) {
+    return { error: 'Tidak ada data untuk dilaporkan.' };
+  }
+
+  // --- Kode pembuatan Excel tidak berubah ---
+  const groupedByFeet: Record<string, StorageData[]> = reportData.reduce((acc, item) => {
+    const feet = item.feet ? `${item.feet} Feet` : 'Ukuran Tidak Diketahui';
+    if (!acc[feet]) acc[feet] = [];
+    acc[feet].push(item);
+    return acc;
+  }, {} as Record<string, StorageData[]>);
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'CNG Application';
+  workbook.created = new Date();
+
+  const baseHeaders = [
+    { header: 'No.', key: 'no', width: 5 },
+    { header: 'Storage Code', key: 'storage_code', width: 20 },
+    { header: 'Pemeriksa', key: 'pemeriksa', width: 25 },
+    { header: 'Tanggal Inspeksi', key: 'tanggal', width: 20 },
+  ];
+  
+  let headersConfig = [...baseHeaders];
+  if (reportType === 'checked') {
+    headersConfig.push({ header: 'Status Pengecekan', key: 'kondisi', width: 25 });
+  } else if (reportType === 'problematic') {
+    headersConfig.push(
+      { header: 'Nama Item', key: 'item_name', width: 30 },
+      { header: 'Kondisi', key: 'kondisi', width: 15 },
+      { header: 'Keterangan', key: 'keterangan', width: 40 }
+    );
+  } else if (reportType === 'maintained') {
+     headersConfig.push(
+      { header: 'Nama Item Bermasalah', key: 'item_name', width: 30 },
+      { header: 'Tanggal Perbaikan', key: 'tgl_perbaikan', width: 25 },
+      { header: 'Tindakan Perbaikan', key: 'tindakan', width: 40 }
+    );
+  }
+  
+  for (const feetGroup in groupedByFeet) {
+    const worksheet = workbook.addWorksheet(feetGroup);
+    worksheet.columns = headersConfig;
+    
+    groupedByFeet[feetGroup].forEach((item, index) => {
+      worksheet.addRow({
+        no: index + 1,
+        storage_code: item.storage_code,
+        pemeriksa: item.pemeriksa,
+        tanggal: item.tanggal ? new Date(item.tanggal).toLocaleDateString('id-ID') : '',
+        kondisi: reportType === 'checked' ? (item.kondisi || 'Belum Dicek') : item.kondisi,
+        item_name: item.item_name,
+        keterangan: item.keterangan,
+        tgl_perbaikan: item.tgl_perbaikan ? new Date(item.tgl_perbaikan).toLocaleDateString('id-ID') : '',
+        tindakan: item.tindakan,
+      });
+    });
+
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFD3D3D3' },
+      };
+    });
+  }
+  
+  const buffer = await workbook.xlsx.writeBuffer();
+  return { file: Buffer.from(buffer).toString('base64') };
 }

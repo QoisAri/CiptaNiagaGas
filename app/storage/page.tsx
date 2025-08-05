@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddStorageButton } from './AddStorageButton';
+import { DownloadButton } from './DownloadButton';
 
 function FilterForm({
   storage_code,
@@ -125,6 +126,7 @@ export default async function StorageListPage({
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Storage</h1>
+        <DownloadButton />
         <AddStorageButton />
       </div>
       

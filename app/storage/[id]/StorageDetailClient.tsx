@@ -5,16 +5,18 @@ import { useActionState } from 'react';
 import { useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { upsertInspectionResult } from '@/app/storage/actions';
-import { FaPrint } from 'react-icons/fa';
+import { FaPrint, FaImage } from 'react-icons/fa';
+import Image from 'next/image';
 
-// Tipe data yang lebih spesifik
+// PERBAIKAN 1: Tambahkan 'problem_photo_url'
 type Row = {
   id: string;
   name: string;
-  standard: string | null; // <-- PERBAIKAN 1: Menambahkan properti standard
+  standard: string | null;
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
+  problem_photo_url: string | null; // <-- Ditambahkan
 };
 type Group = Record<string, Row[]>;
 
@@ -46,7 +48,8 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: string, pathname: string }) {
+// ItemRow diubah untuk menerima prop 'onShowImage'
+function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspectionId: string, pathname: string, onShowImage: (url: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
   const [formState, formAction] = useActionState(upsertInspectionResult, { message: '', success: false });
   const formId = `form-${row.id}`;
@@ -55,10 +58,11 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
     if (formState.success) setIsEditing(false);
   }, [formState]);
 
+  const cleanedUrl = row.problem_photo_url?.replace(/([^:]\/)\/+/g, "$1") || '';
+
   return (
     <tr>
       <td className="border border-black px-4 py-2 text-black">{row.name}</td>
-      {/* PERBAIKAN 3: Menambahkan sel data untuk kolom standard */}
       <td className="border border-black px-4 py-2 text-black">{row.standard || '-'}</td>
       {isEditing ? (
         <>
@@ -78,6 +82,18 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
           <td className="border border-black px-4 py-2 text-black">{row.keterangan}</td>
         </>
       )}
+      
+      {/* PERBAIKAN 2: Tambahkan sel untuk ikon foto */}
+      <td className="border border-black px-4 py-2 text-center">
+        {row.problem_photo_url ? (
+          <button onClick={() => onShowImage(cleanedUrl)} className="text-blue-600 hover:underline">
+            <FaImage className="inline-block h-5 w-5" />
+          </button>
+        ) : (
+          '-'
+        )}
+      </td>
+      
       <td className="border border-black px-4 py-2 text-center space-x-2 no-print">
         {isEditing ? (
           <form id={formId} action={formAction}>
@@ -99,6 +115,7 @@ function ItemRow({ row, inspectionId, pathname }: { row: Row, inspectionId: stri
 
 export const StorageDetailClient = ({ inspectionHeader, groups, deleteAction }: Props) => {
   const pathname = usePathname();
+  const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
 
   const handlePrint = () => {
     window.print();
@@ -148,16 +165,17 @@ export const StorageDetailClient = ({ inspectionHeader, groups, deleteAction }: 
                 <thead className="bg-gray-200">
                   <tr>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black w-1/3">Item</th>
-                    {/* PERBAIKAN 2: Menambahkan header kolom Standard */}
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
+                    {/* PERBAIKAN 3: Tambahkan header untuk kolom Foto */}
+                    <th className="border border-black px-4 py-2 text-center font-bold text-black">Foto</th>
                     <th className="border border-black px-4 py-2 text-center font-bold text-black w-48 no-print">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((row) => (
-                    <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} />
+                    <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} onShowImage={setModalImageUrl} />
                   ))}
                 </tbody>
               </table>
@@ -165,6 +183,30 @@ export const StorageDetailClient = ({ inspectionHeader, groups, deleteAction }: 
           </div>
         ))}
       </div>
+      
+      {/* PERBAIKAN 4: Tambahkan elemen modal di sini */}
+      {modalImageUrl && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"
+          onClick={() => setModalImageUrl(null)}
+        >
+          <div className="relative p-4">
+            <button 
+              onClick={() => setModalImageUrl(null)}
+              className="absolute -top-10 -right-4 text-white text-3xl font-bold"
+            >
+              &times;
+            </button>
+            <Image 
+              src={modalImageUrl}
+              alt="Problem photo"
+              width={800}
+              height={600}
+              className="max-w-screen-lg max-h-screen-lg object-contain"
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 };
