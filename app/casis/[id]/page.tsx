@@ -1,5 +1,3 @@
-// app/chasis/[id]/page.tsx
-
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { CasisDetailClient } from './CasisDetailClient';
@@ -8,29 +6,27 @@ import { JSX } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-// PERBAIKAN 1: Tambahkan 'problem_photo_url' ke tipe Row
-type Row = {
-  id: string;
-  name: string;
-  standard: string | null;
-  resultId: string | null;
-  kondisi: string;
-  keterangan: string | null;
-  problem_photo_url: string | null; // <-- Ditambahkan
-};
+// Tipe data detail
+type Row = { id: string; name: string; standard: string | null; resultId: string | null; kondisi: string; keterangan: string | null; problem_photo_url: string | null; };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
-
-// ... (Tipe data lain tetap sama)
-type InspectionItem = {
-  id: string; name: string; standard: string | null;
-  parent_id: string | null; page_title: string | null;
-};
-type ItemWithResult = InspectionItem & {
-  resultId: string | null; kondisi: string; keterangan: string | null;
-  problem_photo_url: string | null; // <-- Ditambahkan
-};
+type InspectionItem = { id: string; name: string; standard: string | null; parent_id: string | null; page_title: string | null; };
+type ItemWithResult = InspectionItem & { resultId: string | null; kondisi: string; keterangan: string | null; problem_photo_url: string | null; };
 type ParentItem = { id: string; name: string; };
+
+// Tipe yang lebih spesifik untuk data dari Supabase
+type InspectionHeaderWithRelations = {
+  id: string;
+  tanggal: string;
+  catatan: string | null;
+  created_at: string;
+  inspector_id: string;
+  head_id: string | null;
+  chassis_id: number | null;
+  storage_id: number | null;
+  chassis: { chassis_code: string; feet: number; } | null;
+  profiles: { name: string; } | null;
+};
 
 type PageProps = {
   params: { id: string };
@@ -40,15 +36,14 @@ export default async function CasisDetailPage({ params }: PageProps): Promise<JS
   const inspectionId = params.id;
   const supabase = createClient();
 
-  const { data: inspectionHeader, error: headerError } = await supabase
+  const { data, error: headerError } = await supabase
     .from('inspections')
-    .select(`
-      *, 
-      chassis!inspections_chassis_id_fkey(chassis_code, feet), 
-      profiles!fk_inspector(name)
-    `)
+    .select(`*, chassis!inspections_chassis_id_fkey(chassis_code, feet), profiles!fk_inspector(name)`)
     .eq('id', inspectionId)
     .single();
+
+  // Memberi tipe yang benar pada data yang diambil
+  const inspectionHeader: InspectionHeaderWithRelations | null = data;
 
   if (headerError || !inspectionHeader || !inspectionHeader.chassis) {
     return notFound();
@@ -57,27 +52,13 @@ export default async function CasisDetailPage({ params }: PageProps): Promise<JS
   const feet = inspectionHeader.chassis.feet;
   
   const searchPattern = `%(C${feet})`;
-  const { data: allMasterItems } = await supabase
-    .from('inspection_items')
-    .select('*')
-    .eq('category', 'Chassis')
-    .ilike('name', searchPattern);
-
-  // PERBAIKAN 2: Ambil 'problem_photo_url' dari inspection_results
-  const { data: inspectionResults } = await supabase
-    .from('inspection_results')
-    .select('id, item_id, kondisi, keterangan, problem_photo_url') // <-- Ditambahkan
-    .eq('inspection_id', inspectionId);
+  const { data: allMasterItems } = await supabase.from('inspection_items').select('*').eq('category', 'Chassis').ilike('name', searchPattern);
+  const { data: inspectionResults } = await supabase.from('inspection_results').select('id, item_id, kondisi, keterangan, problem_photo_url').eq('inspection_id', inspectionId);
   
   const resultsMap = new Map(
     (inspectionResults || []).map(result => [
       result.item_id,
-      { 
-        id: result.id, 
-        kondisi: result.kondisi, 
-        keterangan: result.keterangan,
-        problem_photo_url: result.problem_photo_url // <-- Ditambahkan
-      },
+      { id: result.id, kondisi: result.kondisi, keterangan: result.keterangan, problem_photo_url: result.problem_photo_url },
     ])
   );
   
@@ -88,7 +69,7 @@ export default async function CasisDetailPage({ params }: PageProps): Promise<JS
       resultId: result?.id || null,
       kondisi: result?.kondisi || 'Belum Diperiksa',
       keterangan: result?.keterangan || '-',
-      problem_photo_url: result?.problem_photo_url || null, // <-- Ditambahkan
+      problem_photo_url: result?.problem_photo_url || null,
     };
   });
 
@@ -119,7 +100,7 @@ export default async function CasisDetailPage({ params }: PageProps): Promise<JS
       resultId: item.resultId, 
       kondisi: item.kondisi, 
       keterangan: item.keterangan,
-      problem_photo_url: item.problem_photo_url // <-- Ditambahkan
+      problem_photo_url: item.problem_photo_url
     };
 
     if (item.parent_id) {
@@ -132,8 +113,9 @@ export default async function CasisDetailPage({ params }: PageProps): Promise<JS
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Detail Pemeriksaan Casis {inspectionHeader.chassis.chassis_code} ({feet} Feet)</h1>
+      {/* Menghapus 'as any' */}
       <CasisDetailClient
-        inspectionHeader={inspectionHeader as any}
+        inspectionHeader={inspectionHeader}
         groups={groups}
         deleteAction={deleteInspection}
       />

@@ -1,60 +1,45 @@
-// app/head/[id]/page.tsx
-
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { InspectionDetailClient } from './InspectionDetailClient';
 import { deleteInspection } from '@/app/head/actions';
+import { JSX } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-// PERBAIKAN 1: Tambahkan 'problem_photo_url'
-type Row = { 
-  id: string;
-  name: string;
-  standard: string | null;
-  resultId: string | null;
-  kondisi: string;
-  keterangan: string | null;
-  problem_photo_url: string | null; // <-- Ditambahkan
-};
+// Tipe data detail
+type Row = { id: string; name: string; standard: string | null; resultId: string | null; kondisi: string; keterangan: string | null; problem_photo_url: string | null; };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
+type InspectionItem = { id: string; name: string; standard: string | null; parent_id: string | null; page_title: string | null; category: string | null; };
+type ItemWithResult = InspectionItem & { resultId: string | null; kondisi: string; keterangan: string | null; problem_photo_url: string | null; };
+type ParentItem = { id: string; name: string; };
 
-type InspectionItem = {
+// Tipe yang lebih spesifik untuk data dari Supabase
+type InspectionHeaderWithRelations = {
   id: string;
-  name: string;
-  standard: string | null;
-  parent_id: string | null;
-  page_title: string | null;
-  category: string | null;
-};
-
-// PERBAIKAN 2: Tambahkan 'problem_photo_url'
-type ItemWithResult = InspectionItem & {
-  resultId: string | null;
-  kondisi: string;
-  keterangan: string | null;
-  problem_photo_url: string | null; // <-- Ditambahkan
-};
-
-type ParentItem = {
-  id: string;
-  name: string;
+  tanggal: string;
+  catatan: string | null;
+  created_at: string;
+  inspector_id: string;
+  head_id: string | null;
+  chassis_id: number | null;
+  storage_id: number | null;
+  heads: { head_code: string; feet: number; } | null;
+  profiles: { name: string; } | null;
 };
 
 export default async function HeadDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
   const supabase = createClient();
 
-  const { data: inspectionHeader, error: headerError } = await supabase
+  const { data, error: headerError } = await supabase
     .from('inspections')
-    .select(`
-      *, 
-      heads!inspections_head_id_fkey(head_code, feet), 
-      profiles!fk_inspector(name)
-    `)
+    .select(`*, heads!inspections_head_id_fkey(head_code, feet), profiles!fk_inspector(name)`)
     .eq('id', inspectionId)
     .single();
+
+  // Memberi tipe yang benar pada data yang diambil
+  const inspectionHeader: InspectionHeaderWithRelations | null = data;
 
   if (headerError || !inspectionHeader || !inspectionHeader.heads) {
     return notFound();
@@ -72,10 +57,9 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
     return <div>Gagal memuat daftar item master.</div>;
   }
   
-  // PERBAIKAN 3: Ambil 'problem_photo_url' dari database
   const { data: inspectionResults } = await supabase
     .from('inspection_results')
-    .select('id, item_id, kondisi, keterangan, problem_photo_url') // <-- Ditambahkan
+    .select('id, item_id, kondisi, keterangan, problem_photo_url')
     .eq('inspection_id', inspectionId);
   
   const resultsMap = new Map(
@@ -85,7 +69,7 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
         id: result.id, 
         kondisi: result.kondisi, 
         keterangan: result.keterangan,
-        problem_photo_url: result.problem_photo_url // <-- Ditambahkan
+        problem_photo_url: result.problem_photo_url
       },
     ])
   );
@@ -97,7 +81,7 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
       resultId: result?.id || null,
       kondisi: result?.kondisi || 'Belum Diperiksa',
       keterangan: result?.keterangan || '-',
-      problem_photo_url: result?.problem_photo_url || null, // <-- Ditambahkan
+      problem_photo_url: result?.problem_photo_url || null,
     };
   });
 
@@ -122,7 +106,6 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
       groups[pageTitle].push(subGroup);
     }
     
-    // PERBAIKAN 4: Masukkan 'problem_photo_url' ke data yang akan dirender
     const rowData: Row = { 
       id: item.id, 
       name: item.name, 
@@ -130,7 +113,7 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
       resultId: item.resultId, 
       kondisi: item.kondisi, 
       keterangan: item.keterangan,
-      problem_photo_url: item.problem_photo_url // <-- Ditambahkan
+      problem_photo_url: item.problem_photo_url
     };
 
     if (item.parent_id) {
@@ -143,8 +126,9 @@ export default async function HeadDetailPage({ params }: { params: { id: string 
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Detail Pemeriksaan Head {inspectionHeader.heads.head_code} ({feet} Feet)</h1>
+      {/* Menghapus 'as any' */}
       <InspectionDetailClient
-        inspectionHeader={inspectionHeader as any}
+        inspectionHeader={inspectionHeader}
         groups={groups}
         deleteAction={deleteInspection}
       />
