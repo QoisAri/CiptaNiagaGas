@@ -52,7 +52,12 @@ type InspectionHeaderWithRelations = {
 };
 
 // Menggunakan tipe CasisPageProps yang sudah didefinisikan
-export default async function CasisDetailPage({ params }: { params: { id: string } }) {
+interface PageProps {
+  params: {
+    id: string;
+  };
+}
+export default async function CasisDetailPage({ params }: PageProps) {
   const inspectionId = params.id;
   const supabase = await createClient();
 
