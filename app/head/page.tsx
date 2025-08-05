@@ -1,7 +1,10 @@
+// app/head/page.tsx
+
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddHeadButton } from './AddHeadButton';
 
+// Komponen FilterForm (tidak diexport default)
 function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?: string; pemeriksa?: string; }) {
   return (
     <form className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border items-end">
@@ -30,24 +33,16 @@ function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?:
   );
 }
 
-type InspectionResult = {
-  kondisi: string | null;
-};
+// Tipe data yang dibutuhkan
+type InspectionResult = { kondisi: string | null; };
+type Inspection = { id: string; tanggal: string; heads: { head_code: string | null; feet: number | null; } | null; profiles: { name: string | null; } | null; inspection_results: InspectionResult[]; };
 
-// Tipe data final yang benar (menggunakan objek tunggal)
-type Inspection = {
-  id: string;
-  tanggal: string;
-  heads: { head_code: string | null, feet: number | null } | null;
-  profiles: { name: string | null } | null;
-  inspection_results: InspectionResult[];
-};
-
-export default async function HeadListPage({ searchParams }: { searchParams?: { feet?: string; head_code?: string; pemeriksa?: string; }; }) {
+// Komponen Halaman (yang diexport default)
+export default async function HeadListPage({ searchParams }: { searchParams: { feet?: string; head_code?: string; pemeriksa?: string; }; }) {
   const supabase = await createClient();
-  const feet = searchParams?.feet;
-  const headCode = searchParams?.head_code;
-  const pemeriksa = searchParams?.pemeriksa;
+  const feet = searchParams.feet;
+  const headCode = searchParams.head_code;
+  const pemeriksa = searchParams.pemeriksa;
 
   let query = supabase
     .from('inspections')
@@ -61,12 +56,10 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
 
   const { data, error } = await query;
   
-  // Menggunakan komentar khusus untuk error palsu dari TypeScript
   // @ts-expect-error Tipe dari Supabase tidak cocok dengan hasil join, tapi data runtime sudah benar.
   const inspections: Inspection[] = data || [];
   
   if (error) {
-    console.error('Error loading head data:', error.message);
     return <div className="p-6 text-red-500">Error loading data: {error.message}</div>;
   }
 
@@ -74,13 +67,9 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Head</h1>
-        <div className="flex items-center space-x-2">
-          <AddHeadButton />
-        </div>
+        <div className="flex items-center space-x-2"><AddHeadButton /></div>
       </div>
-      
       <FilterForm feet={feet} head_code={headCode} pemeriksa={pemeriksa} />
-
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
@@ -95,20 +84,15 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
           <tbody className="bg-white divide-y divide-gray-200">
             {inspections && inspections.length > 0 ? (
               inspections.map((item, index) => {
-                const hasError = item.inspection_results.some(
-                  (result: InspectionResult) => result.kondisi === 'tidak_baik'
-                );
+                const hasError = item.inspection_results.some((result: InspectionResult) => result.kondisi === 'tidak_baik');
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
-                    {/* Mengakses data sebagai objek, bukan array */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">{item.heads?.head_code}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.profiles?.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Link href={`/head/${item.id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 px-3 py-1 rounded-md">
-                        Lihat Detail
-                      </Link>
+                      <Link href={`/head/${item.id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 px-3 py-1 rounded-md">Lihat Detail</Link>
                     </td>
                   </tr>
                 );
