@@ -23,7 +23,7 @@ type AssetInfo = {
 
 // Pendekatan baru yang lebih aman untuk mengambil data
 async function getMaintenanceData(): Promise<MaintenanceItem[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // 1. Ambil data utama dari maintenance_records
   const { data: records, error: recordsError } = await supabase

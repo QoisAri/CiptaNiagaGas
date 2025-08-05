@@ -26,7 +26,7 @@ type InspectionHeaderWithRelations = {
 
 export default async function StorageDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('inspections')

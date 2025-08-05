@@ -6,7 +6,6 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import ExcelJS from 'exceljs';
-import { headers } from 'next/headers';
 
 
 // =================================================================
@@ -211,7 +210,7 @@ type StorageData = {
 export async function generateStorageReport(reportType: 'checked' | 'problematic' | 'maintained') {
   const supabase = await createClient();
   let reportData: StorageData[] = [];
-  let fileName = `laporan-storage-${reportType}.xlsx`;
+  const fileName = `laporan-storage-${reportType}.xlsx`;
 
   // Ambil semua data master yang dibutuhkan
   const { data: allStorages } = await supabase.from('storages').select('*');

@@ -13,7 +13,7 @@ export type HistoryItem = {
 };
 
 async function getWashingHistory(): Promise<HistoryItem[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   // Langkah 1: Ambil semua data mentah dari washing_history
   const { data: historyData, error: historyError } = await supabase

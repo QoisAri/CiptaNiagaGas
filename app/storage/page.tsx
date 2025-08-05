@@ -92,7 +92,7 @@ export default async function StorageListPage({
     pemeriksa?: string;
   };
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const storageCode = searchParams?.storage_code;
   const feet = searchParams?.feet;
   const pemeriksa = searchParams?.pemeriksa;

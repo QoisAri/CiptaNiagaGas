@@ -44,7 +44,7 @@ type Inspection = {
 };
 
 export default async function HeadListPage({ searchParams }: { searchParams?: { feet?: string; head_code?: string; pemeriksa?: string; }; }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   const feet = searchParams?.feet;
   const headCode = searchParams?.head_code;
   const pemeriksa = searchParams?.pemeriksa;
