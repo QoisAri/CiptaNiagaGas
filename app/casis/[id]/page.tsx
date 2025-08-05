@@ -48,11 +48,7 @@ type InspectionHeaderWithRelations = {
 
 // ✅ PERBAIKAN: Mendefinisikan tipe props secara inline di dalam parameter fungsi.
 // Ini adalah cara yang paling aman dan jelas untuk TypeScript di Next.js App Router.
-export default async function CasisDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function CasisDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
   const supabase = await createClient();
 
