@@ -86,16 +86,20 @@ type Inspection = {
 export default async function StorageListPage({
   searchParams,
 }: {
-  searchParams?: {
+  // 'searchParams' tidak lagi opsional, karena Next.js selalu menyediakannya.
+  searchParams: {
+    // Properti di dalamnya tetap opsional, karena tergantung pada URL.
     storage_code?: string;
     feet?: string;
     pemeriksa?: string;
   };
 }) {
   const supabase = await createClient();
-  const storageCode = searchParams?.storage_code;
-  const feet = searchParams?.feet;
-  const pemeriksa = searchParams?.pemeriksa;
+
+  // Karena searchParams dijamin ada, Anda bisa langsung mengakses propertinya.
+  const storageCode = searchParams.storage_code;
+  const feet = searchParams.feet;
+  const pemeriksa = searchParams.pemeriksa;
   
   let query = supabase
     .from('inspections')

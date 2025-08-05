@@ -8,10 +8,10 @@ import { deleteInspection } from '@/app/casis/actions';
 export const dynamic = 'force-dynamic';
 
 // Mendefinisikan tipe props dengan nama unik untuk menghindari konflik
-type CasisPageProps = {
+/*type CasisPageProps = {
   params: { id: string };
 };
-
+*/
 // Tipe data lain yang dibutuhkan oleh komponen
 type Row = {
   id: string;
@@ -52,7 +52,7 @@ type InspectionHeaderWithRelations = {
 };
 
 // Menggunakan tipe CasisPageProps yang sudah didefinisikan
-export default async function CasisDetailPage({ params }: CasisPageProps) {
+export default async function CasisDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
   const supabase = await createClient();
 
