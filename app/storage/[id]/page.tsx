@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { StorageDetailClient } from './StorageDetailClient';
-import { deleteInspection } from '@/app/storage/actions';
+import { deleteInspection } from '@/app/actions';
 import { JSX } from 'react';
 
 export const dynamic = 'force-dynamic';

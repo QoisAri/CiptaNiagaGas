@@ -1,46 +1,42 @@
-'use server'
+'use server';
 
-import { createClient } from '@/utils/supabase/server'
-import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
-export async function login(formData: FormData) {
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const supabase = createClient()
+export type FormState = { 
+  message: string; 
+  success: boolean; 
+  error?: boolean; 
+};
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+// =================================================================
+// FUNGSI UMUM
+// =================================================================
+
+/**
+ * Aksi untuk MENGHAPUS seluruh record inspeksi.
+ * Digunakan di halaman detail Casis, Storage, dan Head.
+ */
+export async function deleteInspection(formData: FormData) {
+  const inspectionId = formData.get('inspectionId') as string;
+  const redirectTo = formData.get('redirectTo') as string;
+
+  if (!inspectionId || !redirectTo) {
+    console.error("Inspection ID or redirect path is missing.");
+    return;
+  }
+
+  const supabase = createClient();
+  const { error } = await supabase.from('inspections').delete().eq('id', inspectionId);
 
   if (error) {
-    console.error('Login error:', error.message);
-    return redirect('/login?message=Email atau password salah.')
+    console.error('Delete Inspection Error:', error);
+    return;
   }
-
-  return redirect('/')
+  revalidatePath(redirectTo);
+  redirect(redirectTo);
 }
 
-export async function signup(formData: FormData) {
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const confirmPassword = formData.get('confirm_password') as string
-  const supabase = createClient()
-
-  // PERUBAHAN: Tambahkan validasi password
-  if (password !== confirmPassword) {
-    return redirect('/signup?message=Password tidak cocok.')
-  }
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-  })
-
-  if (error) {
-    console.error('Signup error:', error.message);
-    return redirect('/signup?message=Gagal membuat akun.')
-  }
-
-  return redirect('/login?message=Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.')
-}
+// Anda bisa menambahkan fungsi umum lainnya di sini di masa depan,
+// seperti addCasis, addHead, login, signup, dll.
