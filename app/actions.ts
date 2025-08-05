@@ -1,3 +1,5 @@
+// app/actions.ts
+
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -11,23 +13,52 @@ export type FormState = {
 };
 
 // =================================================================
-// FUNGSI UMUM
+// FUNGSI AUTENTIKASI
 // =================================================================
 
-/**
- * Aksi untuk MENGHAPUS seluruh record inspeksi.
- * Digunakan di halaman detail Casis, Storage, dan Head.
- */
+export async function login(formData: FormData) {
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    console.error('Login Error:', error.message);
+    return redirect('/login?message=Email atau password salah.');
+  }
+  return redirect('/');
+}
+
+export async function signup(formData: FormData) {
+  const email = formData.get('email') as string;
+  const password = formData.get('password') as string;
+  const confirmPassword = formData.get('confirm_password') as string;
+  const supabase = await createClient();
+
+  if (password !== confirmPassword) {
+    return redirect('/signup?message=Password tidak cocok.');
+  }
+
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    console.error('Signup Error:', error.message);
+    return redirect('/signup?message=Gagal membuat akun.');
+  }
+  return redirect('/login?message=Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.');
+}
+
+
+// =================================================================
+// FUNGSI UMUM LAINNYA
+// =================================================================
+
 export async function deleteInspection(formData: FormData) {
   const inspectionId = formData.get('inspectionId') as string;
   const redirectTo = formData.get('redirectTo') as string;
 
-  if (!inspectionId || !redirectTo) {
-    console.error("Inspection ID or redirect path is missing.");
-    return;
-  }
+  if (!inspectionId || !redirectTo) return;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from('inspections').delete().eq('id', inspectionId);
 
   if (error) {
@@ -37,6 +68,3 @@ export async function deleteInspection(formData: FormData) {
   revalidatePath(redirectTo);
   redirect(redirectTo);
 }
-
-// Anda bisa menambahkan fungsi umum lainnya di sini di masa depan,
-// seperti addCasis, addHead, login, signup, dll.

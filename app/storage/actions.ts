@@ -27,7 +27,7 @@ export type FormState = {
 export async function login(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -41,7 +41,7 @@ export async function signup(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirm_password') as string;
-  const supabase = createClient();
+  const supabase = await createClient();
 
   if (password !== confirmPassword) {
     return redirect('/signup?message=Password tidak cocok.');
@@ -61,7 +61,7 @@ export async function signup(formData: FormData) {
 // =================================================================
 
 export async function addHead(prevState: FormState, formData: FormData): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const headCode = formData.get('head_code') as string;
   const type = formData.get('type') as string;
   const feet = formData.get('feet') as string;
@@ -84,7 +84,7 @@ export async function addHead(prevState: FormState, formData: FormData): Promise
 }
 
 export async function addCasis(prevState: FormState, formData: FormData): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const casisCode = formData.get('casis_code') as string;
   const type = formData.get('type') as string;
   const feet = formData.get('feet') as string;
@@ -107,7 +107,7 @@ export async function addCasis(prevState: FormState, formData: FormData): Promis
 }
 
 export async function addStorage(prevState: FormState, formData: FormData): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const storageCode = formData.get('storage_code') as string;
   const type = formData.get('type') as string;
 
@@ -138,7 +138,7 @@ export async function deleteInspection(formData: FormData) {
 
   if (!inspectionId || !redirectTo) return;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from('inspections').delete().eq('id', inspectionId);
 
   if (error) {
@@ -153,7 +153,7 @@ export async function upsertInspectionResult(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const data = {
     resultId: formData.get('resultId') as string,
@@ -209,7 +209,7 @@ type StorageData = {
 };
 
 export async function generateStorageReport(reportType: 'checked' | 'problematic' | 'maintained') {
-  const supabase = createClient();
+  const supabase = await createClient();
   let reportData: StorageData[] = [];
   let fileName = `laporan-storage-${reportType}.xlsx`;
 
