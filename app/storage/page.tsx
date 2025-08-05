@@ -1,4 +1,3 @@
-// PERBAIKAN: Mengimpor Link dari next/link
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddStorageButton } from './AddStorageButton';
@@ -74,10 +73,12 @@ function FilterForm({
 type InspectionResult = {
   kondisi: string | null;
 };
+
+// Tipe data final yang benar (menggunakan objek tunggal)
 type Inspection = {
   id: string;
   tanggal: string;
-  storages: { storage_code: string | null } | null;
+  storages: { storage_code: string | null; feet: number | null; } | null;
   profiles: { name: string | null } | null;
   inspection_results: InspectionResult[];
 };
@@ -96,7 +97,6 @@ export default async function StorageListPage({
   const feet = searchParams?.feet;
   const pemeriksa = searchParams?.pemeriksa;
   
-  // PERBAIKAN UTAMA: Tentukan foreign key constraint secara eksplisit
   let query = supabase
     .from('inspections')
     .select('id, tanggal, storages!inspections_storage_id_fkey!inner(storage_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)')
@@ -115,8 +115,9 @@ export default async function StorageListPage({
 
   const { data, error } = await query;
   
-  // Menggunakan type assertion untuk mengatasi potensi ketidakcocokan tipe dari library
-  const inspections = (data as any) as Inspection[];
+  // Menggunakan komentar khusus untuk error palsu dari TypeScript
+  // @ts-expect-error Tipe dari Supabase tidak cocok dengan hasil join, tapi data runtime sudah benar.
+  const inspections: Inspection[] = data || [];
 
   if (error) {
     return <div className="p-6 text-red-500">Error: {error.message}</div>;
@@ -126,8 +127,10 @@ export default async function StorageListPage({
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Storage</h1>
-        <DownloadButton />
-        <AddStorageButton />
+        <div className="flex items-center space-x-2">
+            <DownloadButton />
+            <AddStorageButton />
+        </div>
       </div>
       
       <FilterForm storage_code={storageCode} feet={feet} pemeriksa={pemeriksa} />
@@ -150,6 +153,7 @@ export default async function StorageListPage({
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                    {/* Mengakses data sebagai objek, bukan array */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">{item.storages?.storage_code}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.profiles?.name}</td>

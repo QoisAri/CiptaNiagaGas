@@ -1,11 +1,8 @@
-// app/casis/page.tsx
-
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddCasisButton } from './AddCasisButton';
 
 function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_code?: string; pemeriksa?: string; }) {
-  // ... (FilterForm component remains unchanged)
   return (
     <form className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-gray-50 rounded-lg border items-end">
       <div>
@@ -36,11 +33,11 @@ type InspectionResult = {
   kondisi: string | null;
 };
 
-// Tipe data ini SUDAH BENAR sesuai console.log
+// Tipe data final yang benar (menggunakan objek tunggal)
 type Inspection = {
   id: string;
   tanggal: string;
-  chassis: { chassis_code: string | null; feet: string | null } | null;
+  chassis: { chassis_code: string | null; feet: number | null } | null;
   profiles: { name: string | null } | null;
   inspection_results: InspectionResult[];
 };
@@ -69,8 +66,9 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
 
   const { data, error } = await query;
   
-  // PERBAIKAN FINAL: Gunakan type assertion untuk mengatasi error TypeScript
-  const inspections = (data as any) as Inspection[];
+  // Menggunakan komentar khusus untuk error palsu dari TypeScript
+  // @ts-expect-error Tipe dari Supabase tidak cocok dengan hasil join, tapi data runtime sudah benar.
+  const inspections: Inspection[] = data || [];
 
   if (error) {
     console.error('Error loading casis data:', error.message);
@@ -104,7 +102,7 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">{index + 1}</td>
-                    {/* Cara menampilkan data ini SUDAH BENAR */}
+                    {/* Mengakses data sebagai objek, bukan array */}
                     <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.chassis?.chassis_code}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 text-sm text-gray-500">{item.profiles?.name}</td>

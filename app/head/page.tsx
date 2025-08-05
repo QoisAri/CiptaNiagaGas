@@ -1,4 +1,3 @@
-// PERBAIKAN: Mengimpor Link dari next/link
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { AddHeadButton } from './AddHeadButton';
@@ -34,6 +33,8 @@ function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?:
 type InspectionResult = {
   kondisi: string | null;
 };
+
+// Tipe data final yang benar (menggunakan objek tunggal)
 type Inspection = {
   id: string;
   tanggal: string;
@@ -48,7 +49,6 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
   const headCode = searchParams?.head_code;
   const pemeriksa = searchParams?.pemeriksa;
 
-  // PERBAIKAN UTAMA: Gunakan nama foreign key constraint yang eksplisit
   let query = supabase
     .from('inspections')
     .select('id, tanggal, heads!inspections_head_id_fkey!inner(head_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)')
@@ -61,8 +61,9 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
 
   const { data, error } = await query;
   
-  // Menggunakan type assertion untuk mencegah error "false positive" dari TypeScript
-  const inspections = (data as any) as Inspection[];
+  // Menggunakan komentar khusus untuk error palsu dari TypeScript
+  // @ts-expect-error Tipe dari Supabase tidak cocok dengan hasil join, tapi data runtime sudah benar.
+  const inspections: Inspection[] = data || [];
   
   if (error) {
     console.error('Error loading head data:', error.message);
@@ -100,6 +101,7 @@ export default async function HeadListPage({ searchParams }: { searchParams?: { 
                 return (
                   <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{index + 1}</td>
+                    {/* Mengakses data sebagai objek, bukan array */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">{item.heads?.head_code}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.profiles?.name}</td>
