@@ -2,7 +2,7 @@
 import { createClient } from '../../utils/supabase/server';
 
 export async function getWashingHistory() {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from('washing_history')

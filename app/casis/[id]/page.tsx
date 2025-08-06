@@ -66,7 +66,7 @@ export default async function Page({ params }: Props) {
   // ===================================================================
   // LANGKAH 2: KEMBALIKAN `await`
   // ===================================================================
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data, error: headerError } = await supabase
     .from('inspections')

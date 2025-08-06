@@ -49,7 +49,7 @@ export default function Sidebar() {
   ];
 
   const handleLogout = async () => {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { error } = await supabase.auth.signOut();
 
     if (!error) {

@@ -43,7 +43,7 @@ type Inspection = {
 };
 
 export default async function CasisListPage({ searchParams }: { searchParams?: { feet?: string; chassis_code?: string; pemeriksa?: string; }; }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const feet = searchParams?.feet;
   const chassisCode = searchParams?.chassis_code;
   const pemeriksa = searchParams?.pemeriksa;

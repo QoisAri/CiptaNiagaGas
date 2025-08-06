@@ -36,7 +36,7 @@ const ExclamationTriangleIcon = () => (
  * dan mengembalikannya dalam format yang siap ditampilkan.
  */
 async function getProblemReports(): Promise<ProblemReport[]> {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   // --- LANGKAH 1: Ambil data utama dari tabel problem_reports ---
   const { data: reports, error: reportsError } = await supabase

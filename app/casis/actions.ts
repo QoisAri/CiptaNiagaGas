@@ -14,7 +14,7 @@ export type FormState = { message: string; success: boolean, error?: boolean };
 export async function login(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return redirect('/login?message=Email atau password salah.');
@@ -25,7 +25,7 @@ export async function signup(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirm_password') as string;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   if (password !== confirmPassword) return redirect('/signup?message=Password tidak cocok.');
 
@@ -46,7 +46,7 @@ export async function addCasis(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const casisCode = formData.get('casis_code') as string;
   const type = formData.get('type') as string;
@@ -89,7 +89,7 @@ export async function deleteInspection(formData: FormData) {
     return;
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
   const { error } = await supabase
     .from('inspections')
     .delete()
@@ -112,7 +112,7 @@ export async function upsertInspectionResult(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const data = {
     resultId: formData.get('resultId') as string,
@@ -151,7 +151,7 @@ export async function upsertInspectionResult(
 
 // Tambahkan fungsi lain seperti addHead dan addStorage di sini jika Anda membutuhkannya juga.
 export async function getRecapData(period: 'daily' | 'weekly' | 'monthly' | 'yearly') {
-  const supabase = await createClient();
+  const supabase = createClient();
   const now = new Date();
   let startDate: Date;
 

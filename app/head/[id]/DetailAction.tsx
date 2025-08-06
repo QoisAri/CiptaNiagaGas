@@ -3,7 +3,7 @@ import { inspectionItemDefinitions } from '@/constants/inspectionItems';
 import type { InspectionItemDefinition } from '@/constants/inspectionItems';
 
 export default async function getHeadInspectionDetailGrouped(id: string) {
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data: inspectionHeader, error: headerError } = await supabase
     .from('head_inspection')

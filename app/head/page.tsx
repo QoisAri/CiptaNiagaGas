@@ -39,7 +39,7 @@ type Inspection = { id: string; tanggal: string; heads: { head_code: string | nu
 
 // Komponen Halaman (yang diexport default)
 export default async function HeadListPage({ searchParams }: { searchParams: { feet?: string; head_code?: string; pemeriksa?: string; }; }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const feet = searchParams.feet;
   const headCode = searchParams.head_code;
   const pemeriksa = searchParams.pemeriksa;

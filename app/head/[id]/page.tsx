@@ -30,7 +30,7 @@ type InspectionHeaderWithRelations = {
 
 export default async function HeadDetailPage({ params }: { params: { id: string } }) {
   const inspectionId = params.id;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data, error: headerError } = await supabase
     .from('inspections')

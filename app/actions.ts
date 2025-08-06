@@ -19,7 +19,7 @@ export type FormState = {
 export async function login(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -33,7 +33,7 @@ export async function signup(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const confirmPassword = formData.get('confirm_password') as string;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   if (password !== confirmPassword) {
     return redirect('/signup?message=Password tidak cocok.');
@@ -58,7 +58,7 @@ export async function deleteInspection(formData: FormData) {
 
   if (!inspectionId || !redirectTo) return;
 
-  const supabase = await createClient();
+  const supabase = createClient();
   const { error } = await supabase.from('inspections').delete().eq('id', inspectionId);
 
   if (error) {

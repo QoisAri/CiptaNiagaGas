@@ -40,7 +40,7 @@ type Inspection = { id: string; tanggal: string; storages: { storage_code: strin
 
 // Komponen Halaman (yang diexport default)
 export default async function StorageListPage({ searchParams, }: { searchParams: { storage_code?: string; feet?: string; pemeriksa?: string; }; }) {
-  const supabase = await createClient();
+  const supabase = createClient();
   const storageCode = searchParams.storage_code;
   const feet = searchParams.feet;
   const pemeriksa = searchParams.pemeriksa;
