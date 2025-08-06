@@ -1,13 +1,52 @@
+// app/casis/[id]/page.tsx
+
 import { notFound } from 'next/navigation';
 import { createClient } from '@/utils/supabase/server';
 import { CasisDetailClient } from './CasisDetailClient';
 import { deleteInspection } from '@/app/casis/actions';
+import { SupabaseClient } from '@supabase/supabase-js'; // <-- Impor SupabaseClient untuk tipe
 
 export const dynamic = 'force-dynamic';
 
-type Row = {
+// ===================================================================
+// LANGKAH 1: DEFINISIKAN SEMUA TIPE DATA YANG DIPERLUKAN
+// ===================================================================
+
+type Props = {
+  params: { id: string };
+};
+
+// Tipe untuk data dari tabel 'inspection_items'
+type InspectionItem = {
   id: string;
   name: string;
+  standard: string | null;
+  category: string;
+  parent_id: string | null;
+  page_title: string | null;
+};
+
+// Tipe untuk data dari tabel 'inspection_results'
+type InspectionResult = {
+  id: string;
+  item_id: string;
+  kondisi: string;
+  keterangan: string | null;
+  problem_photo_url: string | null;
+};
+
+// Tipe untuk data gabungan yang akan ditampilkan
+type ItemWithResult = InspectionItem & {
+  resultId: string | null;
+  kondisi: string;
+  keterangan: string | null;
+  problem_photo_url: string | null;
+};
+
+// Tipe untuk baris data di tabel tampilan (sama seperti tipe Row Anda)
+type Row = {
+  id: string;
+  name:string;
   standard: string | null;
   resultId: string | null;
   kondisi: string;
@@ -15,9 +54,19 @@ type Row = {
   problem_photo_url: string | null;
 };
 
-export default async function Page({ params }: { params: { id: string } }) {
+// Tipe untuk data parent
+type ParentItem = {
+    id: string;
+    name: string;
+};
+
+
+export default async function Page({ params }: Props) {
   const inspectionId = params.id;
-  const supabase =await  createClient();
+  // ===================================================================
+  // LANGKAH 2: KEMBALIKAN `await`
+  // ===================================================================
+  const supabase = await createClient();
 
   const { data, error: headerError } = await supabase
     .from('inspections')
@@ -33,6 +82,10 @@ export default async function Page({ params }: { params: { id: string } }) {
   const feet = data.chassis.feet;
   const searchPattern = `%(C${feet})`;
 
+  // ===================================================================
+  // LANGKAH 3: TERAPKAN TIPE PADA SETIAP PENGAMBILAN DATA
+  // ===================================================================
+
   const { data: allMasterItems } = await supabase
     .from('inspection_items')
     .select('*')
@@ -44,8 +97,9 @@ export default async function Page({ params }: { params: { id: string } }) {
     .select('id, item_id, kondisi, keterangan, problem_photo_url')
     .eq('inspection_id', inspectionId);
 
+  // Beri tipe pada parameter callback untuk Map
   const resultsMap = new Map(
-    (inspectionResults || []).map((result) => [
+    (inspectionResults || []).map((result: InspectionResult) => [
       result.item_id,
       {
         id: result.id,
@@ -56,7 +110,8 @@ export default async function Page({ params }: { params: { id: string } }) {
     ])
   );
 
-  const itemsWithResults = (allMasterItems || []).map((item) => {
+  // Beri tipe pada parameter callback untuk map dan pastikan return type cocok
+  const itemsWithResults: ItemWithResult[] = (allMasterItems || []).map((item: InspectionItem) => {
     const result = resultsMap.get(item.id);
     return {
       ...item,
@@ -78,9 +133,11 @@ export default async function Page({ params }: { params: { id: string } }) {
       .from('inspection_items')
       .select('id, name')
       .in('id', parentIds as string[]);
-    (parents || []).forEach((p) => parentNameMap.set(p.id, p.name));
+    // Beri tipe pada parameter callback untuk forEach
+    (parents || []).forEach((p: ParentItem) => parentNameMap.set(p.id, p.name));
   }
 
+  // Beri tipe pada item di dalam loop
   for (const item of itemsWithResults) {
     const pageTitle = item.page_title || 'Lainnya';
     if (!groups[pageTitle]) groups[pageTitle] = [];
