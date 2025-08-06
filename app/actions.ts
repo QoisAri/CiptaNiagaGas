@@ -26,7 +26,7 @@ export async function login(formData: FormData) {
     console.error('Login Error:', error.message);
     return redirect('/login?message=Email atau password salah.');
   }
-  return redirect('/');
+  return redirect('/dashboard');
 }
 
 export async function signup(formData: FormData) {
@@ -44,7 +44,7 @@ export async function signup(formData: FormData) {
     console.error('Signup Error:', error.message);
     return redirect('/signup?message=Gagal membuat akun.');
   }
-  return redirect('/login?message=Pendaftaran berhasil! Silakan cek email Anda untuk verifikasi.');
+  return redirect('/login');
 }
 
 
