@@ -44,7 +44,7 @@ export async function signup(formData: FormData) {
     console.error('Signup Error:', error.message);
     return redirect('/signup?message=Gagal membuat akun.');
   }
-  return redirect('/login');
+  return redirect('/dashboard');
 }
 
 
