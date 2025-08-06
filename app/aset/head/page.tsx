@@ -1,6 +1,5 @@
 'use client';
 
-// PERBAIKAN: Mengimpor useCallback
 import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
@@ -36,24 +35,26 @@ export default function DaftarHeadPage() {
   const [newHeadType, setNewHeadType] = useState('');
   const [newHeadFeet, setNewHeadFeet] = useState<number | ''>('');
 
-  // PERBAIKAN: Membungkus fungsi dengan useCallback
   const fetchHeads = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('heads')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
 
     if (error) {
       console.error('Error fetching heads:', error);
       setError('Gagal memuat data head.');
     } else {
-      setHeadList(data);
+      const sortedData = data.sort((a, b) => {
+        if (a.feet < b.feet) return -1;
+        if (a.feet > b.feet) return 1;
+        return a.head_code.localeCompare(b.head_code, undefined, { numeric: true, sensitivity: 'base' });
+      });
+      setHeadList(sortedData);
     }
     setIsLoading(false);
   }, [supabase]);
 
-  // PERBAIKAN: Menambahkan fetchHeads ke dependency array
   useEffect(() => {
     fetchHeads();
   }, [fetchHeads]);
@@ -65,24 +66,24 @@ export default function DaftarHeadPage() {
         return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('heads')
       .insert([{ 
         head_code: newHeadCode, 
         type: newHeadType, 
         feet: newHeadFeet 
-      }])
-      .select();
+      }]);
 
     if (error) {
       console.error('Error adding head:', error);
-      alert('Gagal menambahkan head baru.');
-    } else if (data) {
-      setHeadList([data[0], ...headList]);
+      alert(`Gagal menambahkan head: ${error.message}`);
+    } else {
+      fetchHeads();
       closeModal();
     }
   };
 
+  // FIX: Perbaikan fungsi handleDeleteHead
   const handleDeleteHead = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus head ini?')) {
       return;
@@ -95,9 +96,9 @@ export default function DaftarHeadPage() {
 
     if (error) {
       console.error('Error deleting head:', error);
-      alert('Gagal menghapus head.');
+      alert(`Gagal menghapus head: ${error.message}`);
     } else {
-      setHeadList(headList.filter(head => head.id !== id));
+      fetchHeads();
     }
   };
 
@@ -174,7 +175,7 @@ export default function DaftarHeadPage() {
                     id="head_code"
                     value={newHeadCode}
                     onChange={(e) => setNewHeadCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
@@ -185,7 +186,7 @@ export default function DaftarHeadPage() {
                     id="type"
                     value={newHeadType}
                     onChange={(e) => setNewHeadType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
@@ -196,7 +197,7 @@ export default function DaftarHeadPage() {
                     id="feet"
                     value={newHeadFeet}
                     onChange={(e) => setNewHeadFeet(e.target.value === '' ? '' : parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>

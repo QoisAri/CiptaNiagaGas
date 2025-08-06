@@ -1,6 +1,5 @@
 'use client';
 
-// PERBAIKAN: Mengimpor useCallback
 import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
@@ -36,24 +35,31 @@ export default function DaftarCasisPage() {
   const [newChassisType, setNewChassisType] = useState('');
   const [newChassisFeet, setNewChassisFeet] = useState<number | ''>('');
 
-  // PERBAIKAN: Membungkus fungsi dengan useCallback agar tidak dibuat ulang di setiap render
   const fetchChassis = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('chassis')
-      .select('*')
-      .order('created_at', { ascending: false });
-
+      .select('*');
+      
     if (error) {
       console.error('Error fetching chassis:', error);
       setError('Gagal memuat data casis.');
     } else {
-      setChassisList(data);
+      const sortedData = data.sort((a, b) => {
+        const aIsNumeric = /^\d+$/.test(a.chassis_code);
+        const bIsNumeric = /^\d+$/.test(b.chassis_code);
+        if (aIsNumeric && !bIsNumeric) return -1;
+        if (!aIsNumeric && bIsNumeric) return 1;
+        if (aIsNumeric && bIsNumeric) {
+          return parseInt(a.chassis_code, 10) - parseInt(b.chassis_code, 10);
+        }
+        return a.chassis_code.localeCompare(b.chassis_code);
+      });
+      setChassisList(sortedData);
     }
     setIsLoading(false);
-  }, [supabase]); // supabase client stabil, jadi ini aman
+  }, [supabase]);
 
-  // PERBAIKAN: Menambahkan fetchChassis ke dependency array
   useEffect(() => {
     fetchChassis();
   }, [fetchChassis]);
@@ -65,24 +71,24 @@ export default function DaftarCasisPage() {
         return;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('chassis')
       .insert([{ 
         chassis_code: newChassisCode, 
         type: newChassisType, 
         feet: newChassisFeet 
-      }])
-      .select();
+      }]);
 
     if (error) {
       console.error('Error adding chassis:', error);
-      alert('Gagal menambahkan casis baru.');
-    } else if (data) {
-      setChassisList([data[0], ...chassisList]);
+      alert(`Gagal menambahkan casis: ${error.message}`);
+    } else {
+      fetchChassis();
       closeModal();
     }
   };
 
+  // FIX: Perbaikan fungsi handleDeleteChassis
   const handleDeleteChassis = async (id: number) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus casis ini?')) {
       return;
@@ -95,9 +101,11 @@ export default function DaftarCasisPage() {
 
     if (error) {
       console.error('Error deleting chassis:', error);
-      alert('Gagal menghapus casis.');
+      alert(`Gagal menghapus casis: ${error.message}`);
     } else {
-      setChassisList(chassisList.filter(chassis => chassis.id !== id));
+      // Panggil fetchChassis untuk memuat ulang data dari database
+      // Ini memastikan UI selalu sinkron
+      fetchChassis();
     }
   };
 
@@ -174,7 +182,7 @@ export default function DaftarCasisPage() {
                     id="chassis_code"
                     value={newChassisCode}
                     onChange={(e) => setNewChassisCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
@@ -185,7 +193,7 @@ export default function DaftarCasisPage() {
                     id="type"
                     value={newChassisType}
                     onChange={(e) => setNewChassisType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
@@ -196,7 +204,7 @@ export default function DaftarCasisPage() {
                     id="feet"
                     value={newChassisFeet}
                     onChange={(e) => setNewChassisFeet(e.target.value === '' ? '' : parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>

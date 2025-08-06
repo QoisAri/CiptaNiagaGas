@@ -1,6 +1,5 @@
 'use client';
 
-// PERBAIKAN: Mengimpor useCallback
 import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
@@ -36,24 +35,38 @@ export default function DaftarStoragePage() {
   const [newStorageType, setNewStorageType] = useState('');
   const [newStorageFeet, setNewStorageFeet] = useState<number | ''>('');
 
-  // PERBAIKAN: Membungkus fungsi dengan useCallback
   const fetchStorages = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('storages')
-      .select('*')
-      .order('created_at', { ascending: false });
+      .select('*');
+      // Hapus .order() dari sini
 
     if (error) {
       console.error('Error fetching storages:', error);
       setError('Gagal memuat data storage.');
     } else {
-      setStorageList(data);
+      // FIX: Tambahkan logika pengurutan di sini
+      const sortedData = data.sort((a, b) => {
+        const aIsNumeric = /^\d+$/.test(a.storage_code);
+        const bIsNumeric = /^\d+$/.test(b.storage_code);
+
+        if (aIsNumeric && !bIsNumeric) return -1; // Angka selalu di atas
+        if (!aIsNumeric && bIsNumeric) return 1;  // Huruf selalu di bawah
+
+        // Jika keduanya angka, urutkan secara numerik
+        if (aIsNumeric && bIsNumeric) {
+          return parseInt(a.storage_code, 10) - parseInt(b.storage_code, 10);
+        }
+
+        // Jika keduanya bukan angka, urutkan secara abjad
+        return a.storage_code.localeCompare(b.storage_code);
+      });
+      setStorageList(sortedData);
     }
     setIsLoading(false);
   }, [supabase]);
 
-  // PERBAIKAN: Menambahkan fetchStorages ke dependency array
   useEffect(() => {
     fetchStorages();
   }, [fetchStorages]);
@@ -78,7 +91,7 @@ export default function DaftarStoragePage() {
       console.error('Error adding storage:', error);
       alert('Gagal menambahkan storage baru.');
     } else if (data) {
-      setStorageList([data[0], ...storageList]);
+      fetchStorages(); // Panggil lagi untuk mengurutkan ulang
       closeModal();
     }
   };
@@ -174,7 +187,7 @@ export default function DaftarStoragePage() {
                     id="storage_code"
                     value={newStorageCode}
                     onChange={(e) => setNewStorageCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
@@ -185,7 +198,7 @@ export default function DaftarStoragePage() {
                     id="type"
                     value={newStorageType}
                     onChange={(e) => setNewStorageType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
@@ -196,7 +209,7 @@ export default function DaftarStoragePage() {
                     id="feet"
                     value={newStorageFeet}
                     onChange={(e) => setNewStorageFeet(e.target.value === '' ? '' : parseInt(e.target.value))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
                   />
                 </div>
