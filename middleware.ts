@@ -8,10 +8,22 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Jika user tidak login dan mencoba mengakses halaman selain login,
-  // arahkan ke halaman login.
-  if (!user && request.nextUrl.pathname !== '/login') {
-    return NextResponse.redirect(new URL('/login', request.url))
+  const { pathname } = request.nextUrl
+
+  // Jika user sudah login
+  if (user) {
+    // dan mencoba mengakses halaman login atau signup, arahkan ke halaman utama
+    if (pathname === '/login' || pathname === '/signup') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+  }
+
+  // Jika user belum login
+  if (!user) {
+    // dan mencoba mengakses halaman selain login atau signup, arahkan ke halaman login
+    if (pathname !== '/login' && pathname !== '/signup') {
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
   }
 
   return response
