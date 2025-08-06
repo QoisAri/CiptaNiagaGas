@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-// PERBAIKAN: 'useActionState' dari 'react', 'useFormStatus' dari 'react-dom'
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+// FIX: Impor useFormState dari react-dom
+import { useFormState, useFormStatus } from 'react-dom';
 import { addStorage, type FormState } from '@/app/storage/actions';
 
 function SubmitButton() {
@@ -20,7 +19,8 @@ export function AddStorageButton() {
   const formRef = useRef<HTMLFormElement>(null);
   
   const initialState: FormState = { message: '', success: false };
-  const [formState, formAction] = useActionState(addStorage, initialState);
+  // FIX: Gunakan useFormState
+  const [formState, formAction] = useFormState(addStorage, initialState);
 
   useEffect(() => {
     if (formState.success) {
@@ -57,7 +57,8 @@ export function AddStorageButton() {
                 </div>
               </div>
               {formState.message && (
-                <div className={`mt-4 text-sm ${formState.error ? 'text-red-600' : 'text-green-600'}`}>{formState.message}</div>
+                // FIX: Menggunakan !formState.success untuk menentukan warna merah (error)
+                <div className={`mt-4 text-sm ${!formState.success ? 'text-red-600' : 'text-green-600'}`}>{formState.message}</div>
               )}
               <div className="mt-6 flex justify-end space-x-3">
                 <button onClick={() => setIsOpen(false)} type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>

@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+// FIX: Impor useFormState dari react-dom
+import { useFormState, useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { upsertInspectionResult } from '@/app/casis/actions';
 import { FaPrint, FaImage } from 'react-icons/fa';
@@ -49,11 +49,10 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-// PERBAIKAN 1: ItemRow menjadi lebih sederhana
-// Logika modal (useState) dihapus dari sini dan dipindahkan ke CasisDetailClient
 function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspectionId: string, pathname: string, onShowImage: (url: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formState, formAction] = useActionState(upsertInspectionResult, { message: '', success: false });
+  // FIX: Gunakan useFormState
+  const [formState, formAction] = useFormState(upsertInspectionResult, { message: '', success: false });
   const formId = `form-${row.id}`;
 
   useEffect(() => {
@@ -63,7 +62,6 @@ function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspe
   const cleanedUrl = row.problem_photo_url?.replace(/([^:]\/)\/+/g, "$1") || '';
 
   return (
-    // <> dan Modal <div> dihapus dari sini
     <tr>
       <td className="border border-black px-4 py-2 text-black">{row.name}</td>
       <td className="border border-black px-4 py-2 text-black">{row.standard || '-'}</td>
@@ -88,7 +86,6 @@ function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspe
       
       <td className="border border-black px-4 py-2 text-center">
         {row.problem_photo_url ? (
-          // Tombol ini sekarang memanggil fungsi dari parent
           <button onClick={() => onShowImage(cleanedUrl)} className="text-blue-600 hover:underline">
             <FaImage className="inline-block h-5 w-5" />
           </button>
@@ -118,7 +115,6 @@ function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspe
 
 export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Props) {
   const pathname = usePathname();
-  // PERBAIKAN 2: State untuk modal sekarang ada di sini
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
 
   const handlePrint = () => {
@@ -150,7 +146,8 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
               <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700">
                 <FaPrint /> Unduh
               </button>
-              <form action={deleteAction} onSubmit={(e) => !confirm('Anda yakin?') && e.preventDefault()}>
+              {/* FIX: Dihapus onSubmit dengan confirm() untuk menghindari masalah deploy */}
+              <form action={deleteAction}>
                 <input type="hidden" name="inspectionId" value={inspectionHeader.id} />
                 <input type="hidden" name="redirectTo" value="/casis" />
                 <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
@@ -181,7 +178,6 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
                     </thead>
                     <tbody>
                       {subGroup.rows.map((row) => (
-                        // ItemRow sekarang menerima prop onShowImage
                         <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} onShowImage={setModalImageUrl} />
                       ))}
                     </tbody>
@@ -193,7 +189,6 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
         ))}
       </div>
 
-      {/* PERBAIKAN 3: Elemen <div> modal sekarang ada di sini, di luar tabel */}
       {modalImageUrl && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"

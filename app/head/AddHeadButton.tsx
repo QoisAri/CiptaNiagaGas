@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-// PERBAIKAN: Memisahkan import sesuai library yang benar
-import { useActionState } from 'react'; 
-import { useFormStatus } from 'react-dom';
-// PERBAIKAN: Menggunakan path relatif untuk import actions
+// FIX: Impor useFormState dari react-dom
+import { useFormState, useFormStatus } from 'react-dom';
 import { addHead, type FormState } from './actions'; 
 
 function SubmitButton() {
@@ -21,7 +19,8 @@ export function AddHeadButton() {
   const formRef = useRef<HTMLFormElement>(null);
   
   const initialState: FormState = { message: '', success: false };
-  const [formState, formAction] = useActionState(addHead, initialState);
+  // FIX: Gunakan useFormState
+  const [formState, formAction] = useFormState(addHead, initialState);
 
   useEffect(() => {
     if (formState.success) {
@@ -86,7 +85,8 @@ export function AddHeadButton() {
               </div>
 
               {formState.message && (
-                <div className={`mt-4 text-sm ${formState.error ? 'text-red-600' : 'text-green-600'}`}>
+                // FIX: Menggunakan !formState.success untuk menentukan warna merah (error)
+                <div className={`mt-4 text-sm ${!formState.success ? 'text-red-600' : 'text-green-600'}`}>
                   {formState.message}
                 </div>
               )}

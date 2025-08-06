@@ -1,10 +1,18 @@
-// app/add-inspection/page.tsx atau komponen form lainnya
+// app/add-inspection/page.tsx
 'use client';
 
 import React, { useState } from 'react';
-import { createClientSupabaseClient } from '@/lib/supabase';
-import { HEAD_INSPECTION_CATEGORIES } from '@/constants/inspectionItems';
-import { v4 as uuidv4 } from 'uuid'; // Pastikan sudah install 'uuid': npm install uuid @types/uuid
+import { createClient } from '@/utils/supabase/client';
+// FIX 1: Menggunakan nama variabel yang benar sesuai file sumber
+import { inspectionCategories } from '@/constants/inspectionItems';
+import { v4 as uuidv4 } from 'uuid';
+
+// FIX 2: Mendefinisikan tipe data untuk item inspeksi agar TypeScript mengerti strukturnya
+interface InspectionItemDefinition {
+  key: string;
+  label: string;
+  description?: string;
+}
 
 interface InspectionItemInput {
   kondisi: string;
@@ -12,9 +20,9 @@ interface InspectionItemInput {
 }
 
 export default function AddInspectionPage() {
-  const supabase = createClientSupabaseClient();
+  const supabase = createClient();
   const [inspectionData, setInspectionData] = useState<{ [key: string]: InspectionItemInput }>({});
-  const [currentInspectionId, setCurrentInspectionId] = useState<string>(uuidv4()); // ID untuk sesi inspeksi ini
+  const [currentInspectionId, setCurrentInspectionId] = useState<string>(uuidv4());
 
   const handleInputChange = (itemKey: string, field: 'kondisi' | 'keterangan', value: string) => {
     setInspectionData(prev => ({
@@ -30,17 +38,18 @@ export default function AddInspectionPage() {
     e.preventDefault();
 
     const resultsToInsert = [];
-    for (const category in HEAD_INSPECTION_CATEGORIES) {
-      for (const itemDef of HEAD_INSPECTION_CATEGORIES[category]) {
+    // FIX 1: Menggunakan nama variabel yang sudah diperbaiki
+    for (const category in inspectionCategories) {
+      // FIX 2: Memberi tipe pada itemDef untuk keamanan tipe
+      for (const itemDef of inspectionCategories[category] as InspectionItemDefinition[]) {
         const itemResult = inspectionData[itemDef.key];
         if (itemResult && itemResult.kondisi && itemResult.keterangan) {
           resultsToInsert.push({
             inspection_id: currentInspectionId,
-            item_id: uuidv4(), // UUID unik untuk setiap baris hasil inspeksi
-            item_name: itemDef.key, // Ini adalah UNIQUE KEY
+            item_id: uuidv4(),
+            item_name: itemDef.key,
             kondisi: itemResult.kondisi,
             keterangan: itemResult.keterangan,
-            // created_at akan diisi otomatis oleh Supabase jika diatur default now()
           });
         }
       }
@@ -58,8 +67,8 @@ export default function AddInspectionPage() {
       alert('Gagal menyimpan hasil inspeksi: ' + error.message);
     } else {
       alert('Hasil inspeksi berhasil disimpan!');
-      setInspectionData({}); // Reset form
-      setCurrentInspectionId(uuidv4()); // Generate ID baru untuk inspeksi berikutnya
+      setInspectionData({});
+      setCurrentInspectionId(uuidv4());
     }
   };
 
@@ -79,10 +88,11 @@ export default function AddInspectionPage() {
           />
         </div>
 
-        {Object.entries(HEAD_INSPECTION_CATEGORIES).map(([categoryName, items]) => (
+        {/* FIX 1 & 2: Menggunakan variabel yang benar dan memberi tipe pada hasil map */}
+        {Object.entries(inspectionCategories).map(([categoryName, items]) => (
           <div key={categoryName} className="mb-6 border border-gray-200 p-4 rounded-md bg-gray-50">
             <h3 className="text-lg font-semibold mb-3 text-gray-800">{categoryName}</h3>
-            {items.map(item => (
+            {(items as InspectionItemDefinition[]).map(item => (
               <div key={item.key} className="flex flex-col md:flex-row md:items-center mb-4 p-2 bg-white rounded-md shadow-sm">
                 <label className="w-full md:w-1/3 text-gray-700 font-medium mb-1 md:mb-0">
                   {item.label} ({item.description || 'N/A'}):

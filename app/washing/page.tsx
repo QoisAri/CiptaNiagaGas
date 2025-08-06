@@ -21,7 +21,7 @@ type RawRecord = {
 };
 
 async function getWashingHistory(): Promise<HistoryItem[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('washing_history')

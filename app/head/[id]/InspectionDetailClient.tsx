@@ -1,14 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useActionState } from 'react';
-import { useFormStatus } from 'react-dom';
+// FIX: Impor useFormState dari react-dom
+import { useFormState, useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { upsertInspectionResult } from '@/app/head/actions';
 import { FaPrint, FaImage } from 'react-icons/fa';
 import Image from 'next/image';
 
-// PERBAIKAN 1: Tambahkan 'problem_photo_url'
 type Row = {
   id: string;
   name: string;
@@ -16,7 +15,7 @@ type Row = {
   resultId: string | null;
   kondisi: string;
   keterangan: string | null;
-  problem_photo_url: string | null; // <-- Ditambahkan
+  problem_photo_url: string | null;
 };
 type SubGroup = { parentName: string; rows: Row[] };
 type Group = Record<string, SubGroup[]>;
@@ -49,10 +48,10 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
   );
 }
 
-// ItemRow diubah untuk menerima prop 'onShowImage'
 function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspectionId: string, pathname: string, onShowImage: (url: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  const [formState, formAction] = useActionState(upsertInspectionResult, { message: '', success: false });
+  // FIX: Gunakan useFormState
+  const [formState, formAction] = useFormState(upsertInspectionResult, { message: '', success: false });
   const formId = `form-${row.id}`;
 
   useEffect(() => {
@@ -85,7 +84,6 @@ function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspe
         </>
       )}
       
-      {/* PERBAIKAN 2: Tambahkan sel untuk ikon foto */}
       <td className="border border-black px-4 py-2 text-center">
         {row.problem_photo_url ? (
           <button onClick={() => onShowImage(cleanedUrl)} className="text-blue-600 hover:underline">
@@ -148,7 +146,8 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
                   <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700">
                     <FaPrint /> Unduh
                   </button>
-                  <form action={deleteAction} onSubmit={(e) => !confirm('Anda yakin?') && e.preventDefault()}>
+                  {/* FIX: Dihapus onSubmit dengan confirm() */}
+                  <form action={deleteAction}>
                       <input type="hidden" name="inspectionId" value={inspectionHeader.id} />
                       <input type="hidden" name="redirectTo" value="/head" />
                       <button type="submit" className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
@@ -170,7 +169,6 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
                     <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
-                    {/* PERBAIKAN 3: Tambahkan header untuk kolom Foto */}
                     <th className="border border-black px-4 py-2 text-center font-bold text-black">Foto</th>
                     <th className="border border-black px-4 py-2 text-center font-bold text-black w-48 no-print">Aksi</th>
                   </tr>
@@ -193,7 +191,6 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
         ))}
       </div>
       
-      {/* PERBAIKAN 4: Tambahkan elemen modal di sini */}
       {modalImageUrl && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"

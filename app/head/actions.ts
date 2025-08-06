@@ -10,7 +10,7 @@ export async function upsertInspectionResult(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const data = {
     resultId: formData.get('resultId') as string,
@@ -51,7 +51,7 @@ export async function deleteInspection(formData: FormData) {
     return;
   }
 
-  const supabase = createClient();
+  const supabase =await createClient();
   const { error } = await supabase
     .from('inspections')
     .delete()
@@ -69,7 +69,7 @@ export async function addHead(
   prevState: FormState,
   formData: FormData
 ): Promise<FormState> {
-  const supabase = createClient();
+  const supabase = await createClient();
   // PERBAIKAN: Menghapus variabel 'user' dan 'userError' yang tidak terpakai
   // const { data: { user }, error: userError } = await supabase.auth.getUser();
   const headCode = formData.get('head_code') as string;

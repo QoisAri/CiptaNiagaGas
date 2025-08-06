@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useActionState } from 'react'; // Dari 'react'
-import { useFormStatus } from 'react-dom';
+// FIX: Impor useFormState dari react-dom, bukan useActionState dari react
+import { useFormState, useFormStatus } from 'react-dom';
 import { addCasis, type FormState } from './actions';
 
 
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+    <button type="submit" disabled={pending} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
       {pending ? 'Menyimpan...' : 'Simpan Data Casis'}
     </button>
   );
@@ -20,7 +20,8 @@ export function AddCasisButton() {
   const formRef = useRef<HTMLFormElement>(null);
   
   const initialState: FormState = { message: '', success: false };
-  const [formState, formAction] = useActionState(addCasis, initialState);
+  // FIX: Gunakan useFormState
+  const [formState, formAction] = useFormState(addCasis, initialState);
 
   useEffect(() => {
     if (formState.success) {
@@ -58,8 +59,9 @@ export function AddCasisButton() {
                   </select>
                 </div>
               </div>
+              {/* Anda mungkin salah ketik di sini, seharusnya formState.success bukan formState.error */}
               {formState.message && (
-                <div className={`mt-4 text-sm ${formState.error ? 'text-red-600' : 'text-green-600'}`}>{formState.message}</div>
+                <div className={`mt-4 text-sm ${!formState.success ? 'text-red-600' : 'text-green-600'}`}>{formState.message}</div>
               )}
               <div className="mt-6 flex justify-end space-x-3">
                 <button onClick={() => setIsOpen(false)} type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>

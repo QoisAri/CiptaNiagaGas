@@ -1,22 +1,32 @@
-'use client'
+// app/casis/[id]/DetailActions.tsx
+'use client';
 
-import { deleteInspection } from '../actions';
+import { deleteInspection } from '../actions'; // Pastikan path ini benar
 
-export default function DetailActions({ inspectionId }: { inspectionId: string }) {
-  const handleDelete = async () => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus data inspeksi ini?')) {
-      await deleteInspection(inspectionId);
-    }
-  };
+type Props = {
+  inspectionId: string;
+};
 
-  const handleEdit = () => {
-    alert('Fungsionalitas Edit akan dibuat selanjutnya.');
-  };
+export function DetailActions({ inspectionId }: Props) {
+  // Kita tidak lagi memerlukan fungsi handleDelete
 
   return (
-    <div className="flex items-center gap-2">
-      <button onClick={handleEdit} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg">Edit</button>
-      <button onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Hapus</button>
+    <div className="flex space-x-2 no-print">
+      {/* Tombol lain bisa ditambahkan di sini */}
+
+      {/* FIX: Bungkus tombol hapus dengan <form> */}
+      <form action={deleteInspection}>
+        {/* Kirim inspectionId melalui input tersembunyi */}
+        <input type="hidden" name="inspectionId" value={inspectionId} />
+        <input type="hidden" name="redirectTo" value="/casis" />
+        
+        <button 
+          type="submit" 
+          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm"
+        >
+          Hapus Inspeksi
+        </button>
+      </form>
     </div>
   );
 }

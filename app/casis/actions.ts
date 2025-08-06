@@ -150,3 +150,75 @@ export async function upsertInspectionResult(
 }
 
 // Tambahkan fungsi lain seperti addHead dan addStorage di sini jika Anda membutuhkannya juga.
+export async function getRecapData(period: 'daily' | 'weekly' | 'monthly' | 'yearly') {
+  const supabase = await createClient();
+  const now = new Date();
+  let startDate: Date;
+
+  switch (period) {
+    case 'daily':
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      break;
+    case 'weekly':
+      startDate = new Date(now.setDate(now.getDate() - now.getDay()));
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case 'monthly':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case 'yearly':
+      startDate = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      throw new Error('Invalid period specified');
+  }
+
+  const { data, error } = await supabase
+    .from('inspections')
+    .select(`
+      id,
+      tanggal,
+      chassis ( chassis_code ),
+      heads ( head_code ),
+      storages ( storage_code ),
+      inspection_results (
+        kondisi,
+        keterangan,
+        inspection_items ( name, standard )
+      )
+    `)
+    .gte('tanggal', startDate.toISOString());
+
+  if (error) {
+    console.error('Error fetching recap data:', error);
+    return [];
+  }
+
+  // Format data agar sesuai dengan yang dibutuhkan komponen Excel
+  const formattedData = data.flatMap(inspection => {
+    // FIX: Akses elemen pertama [0] dari array relasi
+    const assetCode = 
+      inspection.chassis[0]?.chassis_code || 
+      inspection.heads[0]?.head_code || 
+      inspection.storages[0]?.storage_code || 
+      'N/A';
+      
+    return inspection.inspection_results.map(result => {
+        // FIX: Akses elemen pertama [0] dari array relasi
+        const itemDetails = Array.isArray(result.inspection_items) 
+            ? result.inspection_items[0] 
+            : result.inspection_items;
+
+        return {
+            'Kode Aset': assetCode,
+            'Tanggal Inspeksi': new Date(inspection.tanggal).toLocaleDateString('id-ID'),
+            'Item Diperiksa': itemDetails?.name || 'N/A',
+            'Standard': itemDetails?.standard || '-',
+            'Kondisi': result.kondisi,
+            'Keterangan': result.keterangan,
+        };
+    });
+  });
+
+  return formattedData;
+}

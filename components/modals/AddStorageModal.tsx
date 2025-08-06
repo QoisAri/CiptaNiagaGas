@@ -1,6 +1,8 @@
 'use client'
 
-import { useActionState, useEffect, useRef } from 'react'
+// FIX 2: Impor useFormState dari react-dom
+import { useFormState } from 'react-dom'
+import { useEffect, useRef } from 'react'
 // Impor fungsi DAN tipe FormState
 import { addStorage, type FormState } from '@/app/storage/actions'
 
@@ -10,15 +12,15 @@ interface AddStorageModalProps {
 }
 
 export default function AddStorageModal({ isOpen, onClose }: AddStorageModalProps) {
-  // Berikan tipe yang jelas pada initialState
-  const initialState: FormState = { message: '' };
+  // FIX 1: Berikan tipe yang jelas dan lengkap pada initialState
+  const initialState: FormState = { message: '', success: false };
   
-  const [state, formAction] = useActionState(addStorage, initialState);
+  // FIX 2: Gunakan useFormState
+  const [state, formAction] = useFormState(addStorage, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    // 'state' sekarang memiliki tipe yang benar, tidak lagi 'never'
-    if (state?.message.includes('berhasil')) {
+    if (state.success) {
       formRef.current?.reset();
       onClose();
     }
@@ -36,17 +38,20 @@ export default function AddStorageModal({ isOpen, onClose }: AddStorageModalProp
         <form ref={formRef} action={formAction} className="space-y-4">
           <div>
             <label htmlFor="storage_code" className="block text-sm font-medium">Storage Code</label>
-            <input type="text" id="storage_code" name="storage_code" required className="mt-1 block w-full border border-gray-300 rounded-md p-2"/>
+            <input type="text" id="storage_code" name="storage_code" required className="mt-1 block w-full border border-gray-300 rounded-md p-2 text-black"/>
           </div>
           <div>
             <label htmlFor="type" className="block text-sm font-medium">Tipe</label>
-            <input type="text" id="type" name="type" placeholder="Contoh: Vertical Storage" required className="mt-1 block w-full border border-gray-300 rounded-md p-2"/>
+            <input type="text" id="type" name="type" placeholder="Contoh: Vertical Storage" required className="mt-1 block w-full border border-gray-300 rounded-md p-2 text-black"/>
           </div>
           <button type="submit" className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700">
             Simpan Data
           </button>
-          {/* Kode ini sekarang akan berfungsi tanpa error */}
-          {state?.message && <p className="text-sm mt-2 text-center">{state.message}</p>}
+          {state?.message && (
+            <p className={`text-sm mt-2 text-center ${!state.success ? 'text-red-600' : 'text-green-600'}`}>
+              {state.message}
+            </p>
+          )}
         </form>
       </div>
     </div>
