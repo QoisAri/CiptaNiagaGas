@@ -40,26 +40,19 @@ export default function DaftarStoragePage() {
     const { data, error } = await supabase
       .from('storages')
       .select('*');
-      // Hapus .order() dari sini
 
     if (error) {
       console.error('Error fetching storages:', error);
       setError('Gagal memuat data storage.');
     } else {
-      // FIX: Tambahkan logika pengurutan di sini
       const sortedData = data.sort((a, b) => {
         const aIsNumeric = /^\d+$/.test(a.storage_code);
         const bIsNumeric = /^\d+$/.test(b.storage_code);
-
-        if (aIsNumeric && !bIsNumeric) return -1; // Angka selalu di atas
-        if (!aIsNumeric && bIsNumeric) return 1;  // Huruf selalu di bawah
-
-        // Jika keduanya angka, urutkan secara numerik
+        if (aIsNumeric && !bIsNumeric) return -1;
+        if (!aIsNumeric && bIsNumeric) return 1;
         if (aIsNumeric && bIsNumeric) {
           return parseInt(a.storage_code, 10) - parseInt(b.storage_code, 10);
         }
-
-        // Jika keduanya bukan angka, urutkan secara abjad
         return a.storage_code.localeCompare(b.storage_code);
       });
       setStorageList(sortedData);
@@ -77,21 +70,15 @@ export default function DaftarStoragePage() {
         alert('Semua field wajib diisi!');
         return;
     }
-
     const { data, error } = await supabase
       .from('storages')
-      .insert([{ 
-        storage_code: newStorageCode, 
-        type: newStorageType, 
-        feet: newStorageFeet 
-      }])
+      .insert([{ storage_code: newStorageCode, type: newStorageType, feet: newStorageFeet }])
       .select();
-
     if (error) {
       console.error('Error adding storage:', error);
       alert('Gagal menambahkan storage baru.');
     } else if (data) {
-      fetchStorages(); // Panggil lagi untuk mengurutkan ulang
+      fetchStorages();
       closeModal();
     }
   };
@@ -100,7 +87,6 @@ export default function DaftarStoragePage() {
     if (!window.confirm('Apakah Anda yakin ingin menghapus storage ini?')) {
       return;
     }
-
     const { error } = await supabase
       .from('storages')
       .delete()
@@ -108,9 +94,9 @@ export default function DaftarStoragePage() {
 
     if (error) {
       console.error('Error deleting storage:', error);
-      alert('Gagal menghapus storage.');
+      alert(`Gagal menghapus storage: ${error.message}`);
     } else {
-      setStorageList(storageList.filter(storage => storage.id !== id));
+      fetchStorages();
     }
   };
 
@@ -126,15 +112,10 @@ export default function DaftarStoragePage() {
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Daftar Aset Storage</h1>
-        <button
-          onClick={openModal}
-          className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusIcon />
-          Tambah Storage
+        <button onClick={openModal} className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+          <PlusIcon /> Tambah Storage
         </button>
       </div>
-
       <div className="overflow-x-auto">
         <table className="w-full table-auto border-collapse">
           <thead className="bg-gray-100">
@@ -146,10 +127,8 @@ export default function DaftarStoragePage() {
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
-              <tr><td colSpan={4} className="text-center py-10">Memuat data...</td></tr>
-            ) : error ? (
-              <tr><td colSpan={4} className="text-center py-10 text-red-500">{error}</td></tr>
+            {isLoading ? ( <tr><td colSpan={4} className="text-center py-10">Memuat data...</td></tr>
+            ) : error ? ( <tr><td colSpan={4} className="text-center py-10 text-red-500">{error}</td></tr>
             ) : storageList.length > 0 ? (
               storageList.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
@@ -157,23 +136,17 @@ export default function DaftarStoragePage() {
                   <td className="px-4 py-3 border-b text-gray-900">{item.type}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.feet}</td>
                   <td className="px-4 py-3 border-b text-gray-900">
-                    <button 
-                      onClick={() => handleDeleteStorage(item.id)}
-                      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100"
-                      aria-label="Hapus"
-                    >
+                    <button onClick={() => handleDeleteStorage(item.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100" aria-label="Hapus">
                       <TrashIcon />
                     </button>
                   </td>
                 </tr>
               ))
-            ) : (
-              <tr><td colSpan={4} className="text-center py-10 text-gray-500">Tidak ada data storage.</td></tr>
+            ) : ( <tr><td colSpan={4} className="text-center py-10 text-gray-500">Tidak ada data storage.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -182,52 +155,32 @@ export default function DaftarStoragePage() {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="storage_code" className="block text-sm font-medium text-gray-700 mb-1">Kode Storage</label>
-                  <input
-                    type="text"
-                    id="storage_code"
-                    value={newStorageCode}
-                    onChange={(e) => setNewStorageCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
-                    required
-                  />
+                  <input type="text" id="storage_code" value={newStorageCode} onChange={(e) => setNewStorageCode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
                   <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                  <input
-                    type="text"
-                    id="type"
-                    value={newStorageType}
-                    onChange={(e) => setNewStorageType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
-                    required
-                  />
+                  <input type="text" id="type" value={newStorageType} onChange={(e) => setNewStorageType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
                   <label htmlFor="feet" className="block text-sm font-medium text-gray-700 mb-1">Feet</label>
-                  <input
-                    type="number"
+                  {/* FIX: Ganti input menjadi select */}
+                  <select
                     id="feet"
                     value={newStorageFeet}
                     onChange={(e) => setNewStorageFeet(e.target.value === '' ? '' : parseInt(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
-                  />
+                  >
+                    <option value="" disabled>Pilih ukuran...</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="40">40</option>
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end gap-4 mt-8">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Simpan
-                </button>
+                <button type="button" onClick={closeModal} className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                <button type="submit" className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Simpan</button>
               </div>
             </form>
           </div>

@@ -65,30 +65,23 @@ export default function DaftarHeadPage() {
         alert('Semua field wajib diisi!');
         return;
     }
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('heads')
-      .insert([{ 
-        head_code: newHeadCode, 
-        type: newHeadType, 
-        feet: newHeadFeet 
-      }]);
-
+      .insert([{ head_code: newHeadCode, type: newHeadType, feet: newHeadFeet }])
+      .select();
     if (error) {
       console.error('Error adding head:', error);
-      alert(`Gagal menambahkan head: ${error.message}`);
-    } else {
+      alert('Gagal menambahkan head baru.');
+    } else if (data) {
       fetchHeads();
       closeModal();
     }
   };
 
-  // FIX: Perbaikan fungsi handleDeleteHead
   const handleDeleteHead = async (id: string) => {
     if (!window.confirm('Apakah Anda yakin ingin menghapus head ini?')) {
       return;
     }
-
     const { error } = await supabase
       .from('heads')
       .delete()
@@ -114,15 +107,10 @@ export default function DaftarHeadPage() {
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Daftar Aset Head</h1>
-        <button
-          onClick={openModal}
-          className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusIcon />
-          Tambah Head
+        <button onClick={openModal} className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+          <PlusIcon /> Tambah Head
         </button>
       </div>
-
       <div className="overflow-x-auto">
         <table className="w-full table-auto border-collapse">
           <thead className="bg-gray-100">
@@ -134,10 +122,8 @@ export default function DaftarHeadPage() {
             </tr>
           </thead>
           <tbody>
-            {isLoading ? (
-              <tr><td colSpan={4} className="text-center py-10">Memuat data...</td></tr>
-            ) : error ? (
-              <tr><td colSpan={4} className="text-center py-10 text-red-500">{error}</td></tr>
+            {isLoading ? ( <tr><td colSpan={4} className="text-center py-10">Memuat data...</td></tr>
+            ) : error ? ( <tr><td colSpan={4} className="text-center py-10 text-red-500">{error}</td></tr>
             ) : headList.length > 0 ? (
               headList.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
@@ -145,23 +131,17 @@ export default function DaftarHeadPage() {
                   <td className="px-4 py-3 border-b text-gray-900">{item.type}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.feet}</td>
                   <td className="px-4 py-3 border-b text-gray-900">
-                    <button 
-                      onClick={() => handleDeleteHead(item.id)}
-                      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100"
-                      aria-label="Hapus"
-                    >
+                    <button onClick={() => handleDeleteHead(item.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100" aria-label="Hapus">
                       <TrashIcon />
                     </button>
                   </td>
                 </tr>
               ))
-            ) : (
-              <tr><td colSpan={4} className="text-center py-10 text-gray-500">Tidak ada data head.</td></tr>
+            ) : ( <tr><td colSpan={4} className="text-center py-10 text-gray-500">Tidak ada data head.</td></tr>
             )}
           </tbody>
         </table>
       </div>
-
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
@@ -170,52 +150,32 @@ export default function DaftarHeadPage() {
               <div className="space-y-4">
                 <div>
                   <label htmlFor="head_code" className="block text-sm font-medium text-gray-700 mb-1">Kode Head</label>
-                  <input
-                    type="text"
-                    id="head_code"
-                    value={newHeadCode}
-                    onChange={(e) => setNewHeadCode(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
-                    required
-                  />
+                  <input type="text" id="head_code" value={newHeadCode} onChange={(e) => setNewHeadCode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
                   <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
-                  <input
-                    type="text"
-                    id="type"
-                    value={newHeadType}
-                    onChange={(e) => setNewHeadType(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
-                    required
-                  />
+                  <input type="text" id="type" value={newHeadType} onChange={(e) => setNewHeadType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
                   <label htmlFor="feet" className="block text-sm font-medium text-gray-700 mb-1">Feet</label>
-                  <input
-                    type="number"
+                  {/* FIX: Ganti input menjadi select */}
+                  <select
                     id="feet"
                     value={newHeadFeet}
                     onChange={(e) => setNewHeadFeet(e.target.value === '' ? '' : parseInt(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black"
                     required
-                  />
+                  >
+                    <option value="" disabled>Pilih ukuran...</option>
+                    <option value="10">10</option>
+                    <option value="20">20</option>
+                    <option value="40">40</option>
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end gap-4 mt-8">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Simpan
-                </button>
+                <button type="button" onClick={closeModal} className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
+                <button type="submit" className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Simpan</button>
               </div>
             </form>
           </div>

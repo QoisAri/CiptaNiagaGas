@@ -8,8 +8,8 @@ import { useAuth } from '../../app/context/AuthContext';
 import { FaTruck, FaWarehouse, FaCogs } from 'react-icons/fa';
 
 const imageData = [
-    { src: '/container-1.png', title: 'Volvo Chasis X90', jam: '11:08' },
-    { src: '/container-2.png', title: 'Acura Polester 3', jam: '08:40' },
+    { src: '/CNG_Survey2.jpg', title: 'Volvo Chasis X90', jam: '11:08' },
+    { src: '/Vision_Mision.jpg', title: 'Acura Polester 3', jam: '08:40' },
 ];
 
 export default function DashboardPage() {
