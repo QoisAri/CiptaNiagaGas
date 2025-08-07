@@ -19,8 +19,8 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 // FIX: Gunakan path string langsung dari folder public
 const imageData = [
-    { src: '/cng.png', title: 'Volvo Chasis X90', jam: '11:08' },
-    { src: '/trukcng.webp', title: 'Acura Polester 3', jam: '08:40' },
+    { src: '/CNG_Survey2.jpg', title: 'Volvo Chasis X90', },
+    { src: '/Vision_Mision.jpg', title: 'Acura Polester 3', },
 ];
 
 // Komponen animasi dengan palet warna yang disesuaikan
@@ -227,10 +227,7 @@ export default function DashboardPage() {
                         <button key={i} className={`w-3 h-3 rounded-full transition-all ${i === activeIndex ? 'bg-blue-600 scale-125' : 'bg-gray-300'}`} onClick={() => setActiveIndex(i)} />
                     ))}
                 </div>
-                <div className='text-center mt-4 border-t pt-4'>
-                    <p className='text-sm text-gray-500'>Terakhir dicek pukul:</p>
-                    <p className='font-bold text-blue-600 text-lg'>{currentCarouselItem.jam}</p>
-                </div>
+                
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
