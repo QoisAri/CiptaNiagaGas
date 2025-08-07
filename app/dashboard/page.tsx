@@ -218,8 +218,7 @@ export default function DashboardPage() {
             <HeaderAnimation />
             
             <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="font-bold mb-4 text-gray-700">Foto Container</h3>
-                <div className="relative aspect-video max-h-[300px] w-full overflow-hidden rounded-lg">
+                <div className="relative aspect-video max-h-[500px] w-full overflow-hidden rounded-lg">
                     <Image src={currentCarouselItem.src} alt={currentCarouselItem.title} fill className="object-cover" />
                 </div>
                 <div className="flex justify-center gap-2 mt-4">
