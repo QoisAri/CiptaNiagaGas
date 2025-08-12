@@ -2,31 +2,28 @@
 
 import { useState } from 'react';
 import { FaPrint } from 'react-icons/fa';
-
-// Tipe data yang diterima dari props
-type MaintenanceData = {
-  tglDitemukan: string;
-  kodeAset: string;
-  tipeFeetDisplay: string | null;
-  deskripsiMasalah: string;
-  tglSelesai: string;
-  keterangan: string;
-  rawTglSelesai: string; // <-- PERBAIKAN: Tambahkan properti ini ke tipe data
-};
+import { saveAs } from 'file-saver';
+import { generateMaintenanceReport } from './action'; 
+import { type MaintenanceItem } from './page';
 
 type Props = {
-  data: MaintenanceData[];
+  data: MaintenanceItem[];
 };
 
 export function DownloadButton({ data }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [period, setPeriod] = useState('all');
+  const [isDownloading, setIsDownloading] = useState(false);
 
+  // ## FUNGSI FILTER YANG SEBELUMNYA KOSONG, KINI SUDAH LENGKAP ##
   const filterDataByPeriod = () => {
+    if (period === 'all') {
+      return data;
+    }
+    
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // Gunakan 'rawTglSelesai' untuk perbandingan tanggal yang akurat
     if (period === 'daily') {
       return data.filter(item => {
         const itemDate = new Date(item.rawTglSelesai);
@@ -47,49 +44,55 @@ export function DownloadButton({ data }: Props) {
         const firstDayOfYear = new Date(today.getFullYear(), 0, 1);
         return data.filter(item => new Date(item.rawTglSelesai) >= firstDayOfYear);
     }
-    return data; // 'all'
+    return data;
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     const dataToDownload = filterDataByPeriod();
-    if (dataToDownload.length === 0) {
+
+    if (!dataToDownload || dataToDownload.length === 0) {
       alert('Tidak ada data untuk diunduh pada periode yang dipilih.');
       return;
     }
 
-    const headers = ['Tgl Ditemukan', 'Kode Aset', 'Tipe Feet', 'Deskripsi Masalah', 'Tgl Selesai', 'Keterangan'];
-    const csvContent = [
-      headers.join(','),
-      ...dataToDownload.map(item => [
-        `"${item.tglDitemukan}"`,
-        `"${item.kodeAset}"`,
-        `"${item.tipeFeetDisplay || 'N/A'}"`,
-        `"${item.deskripsiMasalah}"`,
-        `"${item.tglSelesai}"`,
-        `"${item.keterangan.replace(/"/g, '""')}"`
-      ].join(','))
-    ].join('\n');
+    setIsDownloading(true);
+    try {
+      const response = await generateMaintenanceReport(dataToDownload);
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute('download', `rekapan_maintenance_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setIsOpen(false);
+      if ('error' in response || !response.file) {
+        throw new Error((response as any).error || 'Gagal membuat file Excel di server.');
+      }
+      
+      const { file, fileName } = response;
+      const byteCharacters = atob(file);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      saveAs(blob, fileName);
+      setIsOpen(false);
+
+    } catch (err) {
+      console.error(err);
+      alert('Terjadi kesalahan saat membuat laporan Excel.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
     <>
       <button onClick={() => setIsOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-bold rounded-lg shadow-md hover:bg-blue-700">
-        <FaPrint /> Cetak Laporan
+        <FaPrint /> Unduh Laporan
       </button>
 
       {isOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
-            <h3 className="text-lg font-bold mb-4">Unduh Laporan Maintenance</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-800">Unduh Laporan Maintenance</h3>
             <div className="space-y-4">
               <div>
                 <label htmlFor="period" className="block text-sm font-medium text-gray-700">Periode Data</label>
@@ -104,7 +107,9 @@ export function DownloadButton({ data }: Props) {
             </div>
             <div className="mt-6 flex justify-end space-x-3">
               <button onClick={() => setIsOpen(false)} type="button" className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50">Batal</button>
-              <button onClick={handleDownload} type="button" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">Unduh (Excel/CSV)</button>
+              <button onClick={handleDownload} type="button" disabled={isDownloading} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400">
+                {isDownloading ? 'Memproses...' : 'Unduh Excel'}
+              </button>
             </div>
           </div>
         </div>
