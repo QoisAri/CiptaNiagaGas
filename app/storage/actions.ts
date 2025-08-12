@@ -6,7 +6,19 @@ import { createClient } from '@/utils/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import ExcelJS from 'exceljs';
-
+import {
+  Document,
+  Packer,
+  Paragraph,
+  TextRun,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+  BorderStyle,
+  VerticalAlign,
+  AlignmentType,
+} from 'docx';
 // =================================================================
 // TIPE DATA UNIVERSAL
 // =================================================================
@@ -459,4 +471,159 @@ export async function generateStorageReport(
   const buffer = await workbook.xlsx.writeBuffer();
   // ✅ FIX 3: Kembalikan juga `fileName` agar bisa digunakan di komponen client
   return { file: Buffer.from(buffer).toString('base64'), fileName: fileName };
+}
+export async function generateStorageWordDoc(inspectionId: string) {
+  const supabase = createClient();
+  const { data: inspection } = await supabase.from('inspections').select(`*`).eq('id', inspectionId).single();
+  if (!inspection) { throw new Error('Data inspeksi tidak ditemukan.'); }
+
+  const { data: storageData } = await supabase.from('storages').select('storage_code, type').eq('id', inspection.storage_id).single();
+  if (!storageData) { throw new Error(`Data storage tidak ditemukan untuk inspeksi ini.`); }
+  
+  const { data: profileData } = await supabase.from('profiles').select('name').eq('id', inspection.inspector_id).single();
+
+  const FONT_SIZE = 14;
+  const FONT_SIZE_HEADER = 10;
+  const FONT_SIZE_TITLE = 10;
+
+  const { data: allMasterItems } = await supabase
+    .from('inspection_items')
+    .select('*')
+    .eq('category', 'Storage')
+    .or(`subtype.eq.${storageData.type},subtype.eq.Umum`);
+
+  const { data: inspectionResults } = await supabase.from('inspection_results').select('*').eq('inspection_id', inspectionId);
+  const resultsMap = new Map(inspectionResults?.map(r => [r.item_id, r]));
+  const itemsWithResults = (allMasterItems || []).map(item => ({...item, result: resultsMap.get(item.id)}));
+
+  const groupedItems: Record<string, any[]> = {};
+  const parentItems: any[] = [];
+  itemsWithResults.forEach(item => {
+    if (!item.parent_id) {
+      parentItems.push(item);
+    } else {
+      if (!groupedItems[item.parent_id]) groupedItems[item.parent_id] = [];
+      groupedItems[item.parent_id].push(item);
+    }
+  });
+
+  const checklistOrder = [
+    "Bracket Tubing", "Cover Container Storage", "Painting", "Logo", "Plate Deck", "Frame", "Cylinder",
+    "Cylinder Valve", "Bracket Cylinder", "Sabuk Cylinder", "Tubing", "Fittings", "Main Header",
+    "Sub Header", "Main Valve", "Bank Valve", "PSV (Pressure Safety Valve)", "Thermal PRD",
+    "Receptacle", "Pressure Gauge", "Temperature Gauge", "Venting Header", "Stiker Reflektor"
+  ];
+  parentItems.sort((a, b) => {
+    const indexA = checklistOrder.indexOf(a.name); const indexB = checklistOrder.indexOf(b.name);
+    if (indexA === -1) return 1; if (indexB === -1) return -1;
+    return indexA - indexB;
+  });
+
+  const compactParagraphStyle = { spacing: { before: 0, after: 0, line: 240 } };
+
+  // ## LOGIKA flatMap YANG SEBELUMNYA KOSONG SEKARANG SUDAH LENGKAP ##
+  const dataRows = parentItems.flatMap((parent, index) => {
+    const children = groupedItems[parent.id] || [];
+    const itemsToRender = children.length > 0 ? children : [parent];
+    const firstItem = itemsToRender[0];
+    const firstResult = firstItem.result;
+    return [
+      new TableRow({
+        children: [
+          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${index + 1}`, size: FONT_SIZE })] })], rowSpan: itemsToRender.length, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, children: [new TextRun({ text: parent.name, size: FONT_SIZE })] })], rowSpan: itemsToRender.length, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: firstResult?.kondisi === 'baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: firstResult?.kondisi === 'tidak_baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, children: [new TextRun({ text: firstResult?.keterangan || '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+        ],
+      }),
+      ...itemsToRender.slice(1).map(child => {
+          const childResult = child.result;
+          return new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: childResult?.kondisi === 'baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+              new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: childResult?.kondisi === 'tidak_baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+              new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, children: [new TextRun({ text: childResult?.keterangan || '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+            ],
+          });
+      })
+    ];
+  });
+
+  const doc = new Document({
+    sections: [{
+      properties: { 
+        page: { 
+          size: { orientation: 'portrait', width: 11909, height: 16834 },
+          margin: { top: 202, bottom: 202, left: 432, right: 14, header: 706, footer: 706 } 
+        } 
+      },
+      children: [
+        new Paragraph({
+          ...compactParagraphStyle,
+          alignment: AlignmentType.CENTER,
+          children: [new TextRun({ text: `CHECK SHEET STORAGE`, bold: true, size: FONT_SIZE_TITLE })],
+        }),
+        new Paragraph(""),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              tableHeader: true,
+              children: [
+                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, size: FONT_SIZE_HEADER })] })]}),
+                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Bagian yang Diperiksa", bold: true, size: FONT_SIZE_HEADER })] })]}),
+                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Kondisi", bold: true, size: FONT_SIZE_HEADER })] })], columnSpan: 2 }),
+                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Keterangan", bold: true, size: FONT_SIZE_HEADER })] })]}),
+              ],
+            }),
+            new TableRow({
+                tableHeader: true,
+                children: [ 
+                    new TableCell({children:[]}), new TableCell({children:[]}),
+                    new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "B", bold: true, size: FONT_SIZE })] })] }),
+                    new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "T", bold: true, size: FONT_SIZE })] })] }),
+                    new TableCell({ children: [] }),
+                ],
+            }),
+            ...dataRows,
+            new TableRow({
+                children: [
+                    new TableCell({ 
+                        children: [new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, children: [ new TextRun({ text: "Note: Beri tanda (✓) pada kolom pilihan (Baik/Tidak), apabila ada kerusakan harap isi kolom keterangan", size: FONT_SIZE, italics: true }) ] })], 
+                        columnSpan: 5,
+                        borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+                    }),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    new TableCell({ 
+                        children: [
+                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diperiksa Oleh", size: FONT_SIZE })] }),
+                            new Paragraph(""), new Paragraph(""),
+                            new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `( ${profileData?.name || '...................'} )`, size: FONT_SIZE })] }),
+                        ],
+                        columnSpan: 2,
+                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+                    }),
+                    new TableCell({ 
+                        children: [
+                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diketahui Oleh", size: FONT_SIZE })] }),
+                            new Paragraph(""), new Paragraph(""),
+                            new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(...................)", size: FONT_SIZE })] }),
+                        ],
+                        columnSpan: 3,
+                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
+                    }),
+                ],
+            }),
+          ],
+        }),
+      ],
+    }],
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  return buffer.toString('base64');
 }
