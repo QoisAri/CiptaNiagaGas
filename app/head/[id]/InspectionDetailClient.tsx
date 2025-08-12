@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-// FIX: Impor useFormState dari react-dom
 import { useFormState, useFormStatus } from 'react-dom';
 import { usePathname } from 'next/navigation';
-import { upsertInspectionResult } from '@/app/head/actions';
-import { FaPrint, FaImage } from 'react-icons/fa';
+import { upsertInspectionResult, generateHeadWordDoc } from '@/app/head/actions'; // Pastikan path ini benar
+import { FaFileWord, FaImage } from 'react-icons/fa';
+import { saveAs } from 'file-saver';
 import Image from 'next/image';
 
 type Row = {
@@ -50,7 +50,6 @@ function SubmitButton({ onCancel }: { onCancel: () => void }) {
 
 function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspectionId: string, pathname: string, onShowImage: (url: string) => void }) {
   const [isEditing, setIsEditing] = useState(false);
-  // FIX: Gunakan useFormState
   const [formState, formAction] = useFormState(upsertInspectionResult, { message: '', success: false });
   const formId = `form-${row.id}`;
 
@@ -116,9 +115,40 @@ function ItemRow({ row, inspectionId, pathname, onShowImage }: { row: Row, inspe
 export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction }: Props) => {
   const pathname = usePathname();
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadWord = async () => {
+    if (isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const base64String = await generateHeadWordDoc(inspectionHeader.id);
+      
+      const byteCharacters = atob(base64String);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+
+      // Membuat format tanggal YYYY-MM-DD
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+
+      // Menggabungkan tanggal ke nama file
+      const fileName = `Laporan-Inspeksi-${inspectionHeader.heads?.head_code}-${dateString}.docx`;
+      
+      saveAs(blob, fileName);
+
+    } catch (error) {
+      console.error("Gagal mengunduh file Word:", error);
+      alert("Terjadi kesalahan saat mengunduh file.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -132,8 +162,8 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
         }
       `}</style>
 
-      <div className="space-y-6 print-area">
-        <div className="bg-white shadow rounded p-4">
+      <div className="space-y-6">
+        <div className="bg-white shadow rounded p-4 mb-6 print-area">
           <div className="flex justify-between items-start">
               <div>
                   <h2 className="text-xl font-semibold mb-2 text-black">Informasi Pemeriksaan</h2>
@@ -143,10 +173,14 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
                   <p className="text-black"><strong>Catatan:</strong> {inspectionHeader.catatan || '-'}</p>
               </div>
               <div className="flex space-x-2 no-print">
-                  <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white font-semibold rounded-md hover:bg-gray-700">
-                    <FaPrint /> Unduh
+                  <button 
+                    onClick={handleDownloadWord}
+                    disabled={isDownloading}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                  >
+                    <FaFileWord /> 
+                    {isDownloading ? 'Mengunduh...' : 'Unduh Word'}
                   </button>
-                  {/* FIX: Dihapus onSubmit dengan confirm() */}
                   <form action={deleteAction}>
                       <input type="hidden" name="inspectionId" value={inspectionHeader.id} />
                       <input type="hidden" name="redirectTo" value="/head" />
@@ -158,42 +192,44 @@ export const InspectionDetailClient = ({ inspectionHeader, groups, deleteAction 
           </div>
         </div>
 
-        {Object.entries(groups).map(([pageTitle, subGroups]) => (
-          <div key={pageTitle} className="bg-white shadow rounded p-4">
-            <h3 className="text-lg font-bold mb-3 text-black">{pageTitle}</h3>
-            <div className="overflow-x-auto">
-              <table className="table-auto w-full border border-collapse border-black">
-                <thead className="bg-gray-200">
-                  <tr>
-                    <th className="border border-black px-4 py-2 text-left font-bold text-black w-1/3">Item</th>
-                    <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
-                    <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
-                    <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
-                    <th className="border border-black px-4 py-2 text-center font-bold text-black">Foto</th>
-                    <th className="border border-black px-4 py-2 text-center font-bold text-black w-48 no-print">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {subGroups.map((subGroup) => (
-                    <React.Fragment key={subGroup.parentName}>
-                      {subGroup.rows.length > 1 && subGroup.parentName !== subGroup.rows[0]?.name && (
-                          <tr><td colSpan={6} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
-                      )}
-                      {subGroup.rows.map((row) => (
-                        <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} onShowImage={setModalImageUrl} />
-                      ))}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
+        <div className="print-area">
+            {Object.entries(groups).map(([pageTitle, subGroups]) => (
+            <div key={pageTitle} className="bg-white shadow rounded p-4 mb-6">
+                <h3 className="text-lg font-bold mb-3 text-black">{pageTitle}</h3>
+                <div className="overflow-x-auto">
+                <table className="table-auto w-full border border-collapse border-black">
+                    <thead className="bg-gray-200">
+                    <tr>
+                        <th className="border border-black px-4 py-2 text-left font-bold text-black w-1/3">Item</th>
+                        <th className="border border-black px-4 py-2 text-left font-bold text-black">Standard</th>
+                        <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
+                        <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
+                        <th className="border border-black px-4 py-2 text-center font-bold text-black">Foto</th>
+                        <th className="border border-black px-4 py-2 text-center font-bold text-black w-48 no-print">Aksi</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {subGroups.map((subGroup) => (
+                        <React.Fragment key={subGroup.parentName}>
+                        {subGroup.rows.length > 1 && subGroup.parentName !== subGroup.rows[0]?.name && (
+                            <tr><td colSpan={6} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
+                        )}
+                        {subGroup.rows.map((row) => (
+                            <ItemRow key={row.id} row={row} inspectionId={inspectionHeader.id} pathname={pathname} onShowImage={setModalImageUrl} />
+                        ))}
+                        </React.Fragment>
+                    ))}
+                    </tbody>
+                </table>
+                </div>
             </div>
-          </div>
-        ))}
+            ))}
+        </div>
       </div>
       
       {modalImageUrl && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 no-print"
           onClick={() => setModalImageUrl(null)}
         >
           <div className="relative p-4">
