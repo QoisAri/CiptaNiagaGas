@@ -88,17 +88,17 @@ export async function generateCasisWordDoc(inspectionId: string) {
   
   const { data: profileData } = await supabase.from('profiles').select('name').eq('id', inspection.inspector_id).single();
 
-  const FONT_SIZE = 12;
-  const FONT_SIZE_HEADER = 8;
-  const FONT_SIZE_TITLE = 8;
+  const FONT_SIZE = 14;
+  const FONT_SIZE_HEADER = 10;
+  const FONT_SIZE_TITLE = 10;
 
+  // Kode pengambilan dan pengurutan data tidak berubah
   const { data: allMasterItems } = await supabase
     .from('inspection_items').select('*').eq('category', 'Chassis').or(`subtype.eq.${chassisData.feet} Feet,subtype.is.null`);
-
+  // ... (sisa logika data)
   const { data: inspectionResults } = await supabase.from('inspection_results').select('*').eq('inspection_id', inspectionId);
   const resultsMap = new Map(inspectionResults?.map(r => [r.item_id, r]));
   const itemsWithResults = (allMasterItems || []).map(item => ({...item, result: resultsMap.get(item.id)}));
-
   const groupedItems: Record<string, any[]> = {};
   const parentItems: any[] = [];
   itemsWithResults.forEach(item => {
@@ -109,7 +109,6 @@ export async function generateCasisWordDoc(inspectionId: string) {
       parentItems.push(item);
     }
   });
-
   const checklistOrder = [
     "KONDISI BAN", "LAMPU", "WIPER", "SISTEM PENGEREMAN", "PER HEAD",
     "U BOLT+TUSHUKAN PER", "HUBBOLT RODA", "ENGINE", "SURAT KENDARAAN", "TOOLS & APAR"
@@ -120,10 +119,8 @@ export async function generateCasisWordDoc(inspectionId: string) {
     return indexA - indexB;
   });
 
-  // ## STYLE UNTUK MENGHILANGKAN SPASI ANTAR PARAGRAF ##
-  const compactParagraphStyle = { spacing: { before: 0, after: 0, line: 200 } }; // 240 = Single line spacing
+  const compactParagraphStyle = { spacing: { before: 0, after: 0, line: 210 } };
 
-  // Membuat baris data checklist
   const dataRows = parentItems.flatMap((parent, index) => {
     const children = groupedItems[parent.id] || [];
     const itemsToRender = children.length > 0 ? children : [parent];
@@ -152,11 +149,28 @@ export async function generateCasisWordDoc(inspectionId: string) {
     ];
   });
 
-  const doc = new Document({
+   const doc = new Document({
     sections: [{
+      // ==========================================================
+      // ## PERBAIKAN PAGE SETUP ADA DI SINI ##
+      // ==========================================================
       properties: { 
         page: { 
-          margin: { top: 200, right: 400, bottom: 200, left: 400 } 
+          size: {
+            // Gunakan string 'portrait' bukan enum
+            orientation: 'portrait',
+            // Masukkan ukuran A4 dalam satuan Twips
+            width: 11909,  // Lebar A4
+            height: 16834, // Tinggi A4
+          },
+          margin: { 
+            top: 202,    // 0.14"
+            bottom: 202, // 0.14"
+            left: 432,   // 0.3"
+            right: 14,   // 0.01"
+            header: 706, // 0.49"
+            footer: 706, // 0.49"
+          } 
         } 
       },
       children: [
@@ -165,9 +179,9 @@ export async function generateCasisWordDoc(inspectionId: string) {
           alignment: AlignmentType.CENTER,
           children: [new TextRun({ text: `CHECK SHEET CHASSIS ${chassisData?.feet || ''} FEET`, bold: true, size: FONT_SIZE_TITLE })],
         }),
-        new Paragraph(""), // Spasi setelah judul
+        new Paragraph(""),
         new Table({
-          width: { size: 60, type: WidthType.PERCENTAGE },
+          width: { size: 100, type: WidthType.PERCENTAGE },
           rows: [
             new TableRow({
               tableHeader: true,
@@ -201,7 +215,7 @@ export async function generateCasisWordDoc(inspectionId: string) {
                 children: [
                     new TableCell({ 
                         children: [
-                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 80}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diperiksa Oleh", size: FONT_SIZE })] }),
+                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diperiksa Oleh", size: FONT_SIZE })] }),
                             new Paragraph(""), new Paragraph(""),
                             new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `( ${profileData?.name || '...................'} )`, size: FONT_SIZE })] }),
                         ],
@@ -210,7 +224,7 @@ export async function generateCasisWordDoc(inspectionId: string) {
                     }),
                     new TableCell({ 
                         children: [
-                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 80}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diketahui Oleh", size: FONT_SIZE })] }),
+                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diketahui Oleh", size: FONT_SIZE })] }),
                             new Paragraph(""), new Paragraph(""),
                             new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(...................)", size: FONT_SIZE })] }),
                         ],
