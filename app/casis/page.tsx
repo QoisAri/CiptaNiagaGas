@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
-import { AddCasisButton } from './AddCasisButton';
+
 
 function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_code?: string; pemeriksa?: string; }) {
   return (
@@ -80,7 +80,7 @@ export default async function CasisListPage({ searchParams }: { searchParams?: {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Casis</h1>
         <div className="flex items-center space-x-2">
-          <AddCasisButton />
+          
         </div>
       </div>
       <FilterForm feet={feet} chassis_code={chassisCode} pemeriksa={pemeriksa} />

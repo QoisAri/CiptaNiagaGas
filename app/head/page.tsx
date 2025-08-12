@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
-import { AddHeadButton } from './AddHeadButton';
+
 
 // Komponen FilterForm (tidak diexport default)
 function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?: string; pemeriksa?: string; }) {
@@ -67,7 +67,7 @@ export default async function HeadListPage({ searchParams }: { searchParams: { f
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Head</h1>
-        <div className="flex items-center space-x-2"><AddHeadButton /></div>
+        
       </div>
       <FilterForm feet={feet} head_code={headCode} pemeriksa={pemeriksa} />
       <div className="bg-white shadow-md rounded-lg overflow-hidden">

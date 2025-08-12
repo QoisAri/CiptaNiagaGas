@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
-import { AddStorageButton } from './AddStorageButton';
 import { DownloadButton } from './DownloadButton';
 
 // Komponen FilterForm (tidak diexport default)
@@ -68,7 +67,6 @@ export default async function StorageListPage({ searchParams, }: { searchParams:
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Storage</h1>
-        <div className="flex items-center space-x-2"><DownloadButton /><AddStorageButton /></div>
       </div>
       <FilterForm storage_code={storageCode} feet={feet} pemeriksa={pemeriksa} />
       <div className="bg-white shadow-md rounded-lg overflow-hidden">
