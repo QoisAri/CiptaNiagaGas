@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { FaTools, FaImage } from 'react-icons/fa';
+import { FaTools, FaImage, FaTrash } from 'react-icons/fa'; // Impor FaTrash
 import { DownloadButton } from './DownloadButton';
 import { type MaintenanceItem } from './page';
+import { deleteMaintenanceRecord } from './action'; // Impor action baru
 import Image from 'next/image';
 
 export default function MaintenanceListClient({ initialMaintenanceData }: { initialMaintenanceData: MaintenanceItem[] }) {
@@ -71,10 +72,10 @@ export default function MaintenanceListClient({ initialMaintenanceData }: { init
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Deskripsi Masalah</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tgl Selesai</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Keterangan</th>
-                {/* FIX: Ganti nama kolom menjadi lebih jelas */}
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Foto Masalah</th>
-                {/* FIX: Tambahkan header untuk kolom Foto Perbaikan */}
                 <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Foto Perbaikan</th>
+                {/* ## 1. TAMBAHKAN HEADER KOLOM AKSI ## */}
+                <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -95,7 +96,6 @@ export default function MaintenanceListClient({ initialMaintenanceData }: { init
                         </button>
                       ) : ('-')}
                     </td>
-                    {/* FIX: Tambahkan sel untuk menampilkan tombol foto perbaikan */}
                     <td className="px-4 py-3 border-b text-gray-900 text-center">
                       {item.repairPhotoUrl ? (
                         <button onClick={() => handleShowImage(item.repairPhotoUrl!)} className="text-green-600 hover:text-green-800">
@@ -103,11 +103,27 @@ export default function MaintenanceListClient({ initialMaintenanceData }: { init
                         </button>
                       ) : ('-')}
                     </td>
+                    {/* ## 2. TAMBAHKAN SEL UNTUK TOMBOL HAPUS ## */}
+                    <td className="px-4 py-3 border-b text-gray-900 text-center">
+                        <form
+                            action={deleteMaintenanceRecord}
+                            onSubmit={(e) => {
+                                if (!confirm('Apakah Anda yakin ingin menghapus catatan perbaikan ini?')) {
+                                    e.preventDefault();
+                                }
+                            }}
+                        >
+                            <input type="hidden" name="maintenanceId" value={item.id} />
+                            <button type="submit" className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition-colors">
+                                <FaTrash size={14} />
+                            </button>
+                        </form>
+                    </td>
                   </tr>
                 ))
               ) : (
-                // FIX: Sesuaikan colSpan karena ada 9 kolom sekarang
-                <tr><td colSpan={9} className="text-center py-10 text-gray-500">Tidak ada data perbaikan yang cocok dengan filter.</td></tr>
+                // ## 3. PERBAIKI COLSPAN MENJADI 10 ##
+                <tr><td colSpan={10} className="text-center py-10 text-gray-500">Tidak ada data perbaikan yang cocok dengan filter.</td></tr>
               )}
             </tbody>
           </table>

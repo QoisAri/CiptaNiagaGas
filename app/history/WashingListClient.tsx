@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { FaPrint, FaShower } from 'react-icons/fa';
-// Impor tipe data dari file page.tsx
+import { FaPrint, FaShower, FaTrash } from 'react-icons/fa';
 import { type HistoryItem } from './page';
+// Impor action baru
+import { deleteWashingHistory } from './action'; 
 
 export function WashingListClient({ initialHistoryData }: { initialHistoryData: HistoryItem[] }) {
   const [filterAsset, setFilterAsset] = useState('all');
@@ -13,6 +14,7 @@ export function WashingListClient({ initialHistoryData }: { initialHistoryData: 
     return initialHistoryData
       .filter(item => {
         if (filterAsset === 'all') return true;
+        // Sekarang assetType akan konsisten (Head, Chassis, Storage)
         return item.assetType.toLowerCase() === filterAsset;
       })
       .filter(item => {
@@ -41,13 +43,7 @@ export function WashingListClient({ initialHistoryData }: { initialHistoryData: 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-slate-50 rounded-lg hide-on-print">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Filter Tipe Aset</label>
-          <select value={filterAsset} onChange={e => setFilterAsset(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md text-black">
-            <option value="all">Semua Tipe</option>
-            <option value="storage">Storage</option>
-          </select>
-        </div>
+        
         <div>
           <label className="block text-sm font-medium text-gray-700">Filter Tipe Feet</label>
           <select value={filterFeet} onChange={e => setFilterFeet(e.target.value)} className="mt-1 block w-full p-2 border border-gray-300 rounded-md text-black">
@@ -65,9 +61,10 @@ export function WashingListClient({ initialHistoryData }: { initialHistoryData: 
             <tr>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">No</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tanggal</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tipe Aset</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Kode Aset</th>
+              
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Kode Storage</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Diliput Oleh</th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -76,13 +73,28 @@ export function WashingListClient({ initialHistoryData }: { initialHistoryData: 
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 border-b text-gray-900">{index + 1}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.tanggal}</td>
-                  <td className="px-4 py-3 border-b text-gray-900">{item.assetType}</td>
+                 
                   <td className="px-4 py-3 border-b text-gray-900 font-semibold">{item.kodeAset}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.diliputOleh}</td>
+                  <td className="px-4 py-3 border-b text-gray-900">
+                    <form
+                      action={deleteWashingHistory}
+                      onSubmit={(e) => {
+                        if (!confirm('Apakah Anda yakin ingin menghapus history ini?')) {
+                          e.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="historyId" value={item.id} />
+                      <button type="submit" className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition-colors">
+                        <FaTrash size={14} />
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan={5} className="text-center py-10 text-gray-500">Tidak ada history yang cocok dengan filter.</td></tr>
+              <tr><td colSpan={6} className="text-center py-10 text-gray-500">Tidak ada history yang cocok dengan filter.</td></tr>
             )}
           </tbody>
         </table>

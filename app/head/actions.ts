@@ -115,23 +115,18 @@ export async function generateHeadWordDoc(inspectionId: string) {
   const { data: inspection } = await supabase.from('inspections').select(`*`).eq('id', inspectionId).single();
   if (!inspection) { throw new Error('Data inspeksi tidak ditemukan.'); }
 
-  // 1. Ambil juga 'feet' dari tabel 'heads'
   const { data: headData } = await supabase.from('heads').select('head_code, feet').eq('id', inspection.head_id).single();
   if (!headData) { throw new Error(`Data head tidak ditemukan untuk inspeksi ini.`); }
   
   const { data: profileData } = await supabase.from('profiles').select('name').eq('id', inspection.inspector_id).single();
 
-  const FONT_SIZE = 14;
-  const FONT_SIZE_HEADER = 10;
-  const FONT_SIZE_TITLE = 10;
+  const FONT_SIZE = 19;
+  const FONT_SIZE_HEADER = 16;
+  const FONT_SIZE_TITLE = 16;
 
-  // 2. Tambahkan filter .or() untuk mencocokkan 'subtype'
   const { data: allMasterItems } = await supabase
-    .from('inspection_items')
-    .select('*')
-    .eq('category', 'Head')
-    .or(`subtype.eq.${headData.feet} Feet,subtype.is.null`);
-
+    .from('inspection_items').select('*').eq('category', 'Head').or(`subtype.eq.${headData.feet} Feet,subtype.is.null`);
+  
   const { data: inspectionResults } = await supabase.from('inspection_results').select('*').eq('inspection_id', inspectionId);
   const resultsMap = new Map(inspectionResults?.map(r => [r.item_id, r]));
   const itemsWithResults = (allMasterItems || []).map(item => ({...item, result: resultsMap.get(item.id)}));
@@ -139,11 +134,9 @@ export async function generateHeadWordDoc(inspectionId: string) {
   const groupedItems: Record<string, any[]> = {};
   const parentItems: any[] = [];
   itemsWithResults.forEach(item => {
-    if (item.parent_id) {
+    if (!item.parent_id) { parentItems.push(item); } else {
       if (!groupedItems[item.parent_id]) groupedItems[item.parent_id] = [];
       groupedItems[item.parent_id].push(item);
-    } else {
-      parentItems.push(item);
     }
   });
 
@@ -157,111 +150,87 @@ export async function generateHeadWordDoc(inspectionId: string) {
     return indexA - indexB;
   });
 
-  const compactParagraphStyle = { spacing: { before: 0, after: 0, line: 240 } };
+  const compactParagraph = { spacing: { before: 0, after: 0, line: 180 } };
 
   const dataRows = parentItems.flatMap((parent, index) => {
     const children = groupedItems[parent.id] || [];
     const itemsToRender = children.length > 0 ? children : [parent];
-    const firstItem = itemsToRender[0];
-    const firstResult = firstItem.result;
+    const firstResult = itemsToRender[0].result;
     return [
       new TableRow({
         children: [
-          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${index + 1}`, size: FONT_SIZE })] })], rowSpan: itemsToRender.length, verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, children: [new TextRun({ text: parent.name, size: FONT_SIZE })] })], rowSpan: itemsToRender.length, verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: firstResult?.kondisi === 'baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: firstResult?.kondisi === 'tidak_baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
-          new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, children: [new TextRun({ text: firstResult?.keterangan || '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `${index + 1}`, size: FONT_SIZE })] })], rowSpan: itemsToRender.length, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraph, children: [new TextRun({ text: parent.name, size: FONT_SIZE })] })], rowSpan: itemsToRender.length, verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: firstResult?.kondisi === 'baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: firstResult?.kondisi === 'tidak_baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
+          new TableCell({ children: [new Paragraph({ ...compactParagraph, children: [new TextRun({ text: firstResult?.keterangan || '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
         ],
       }),
-      ...itemsToRender.slice(1).map(child => {
-          const childResult = child.result;
-          return new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: childResult?.kondisi === 'baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
-              new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: childResult?.kondisi === 'tidak_baik' ? '✓' : '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
-              new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, children: [new TextRun({ text: childResult?.keterangan || '', size: FONT_SIZE })] })], verticalAlign: VerticalAlign.CENTER }),
-            ],
-          });
-      })
+      ...itemsToRender.slice(1).map(child => new TableRow({
+          children: [
+            new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: child.result?.kondisi === 'baik' ? '✓' : '', size: FONT_SIZE })] })]}),
+            new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: child.result?.kondisi === 'tidak_baik' ? '✓' : '', size: FONT_SIZE })] })]}),
+            new TableCell({ children: [new Paragraph({ ...compactParagraph, children: [new TextRun({ text: child.result?.keterangan || '', size: FONT_SIZE })] })]}),
+          ],
+      })),
     ];
   });
 
   const doc = new Document({
     sections: [{
-      properties: { 
-        page: { 
-          size: {
-            orientation: 'portrait',
-            width: 11909,
-            height: 16834,
-          },
-          margin: { 
-            top: 202, bottom: 202, left: 432, right: 14,
-            header: 706, footer: 706,
-          } 
-        } 
-      },
+      properties: { page: { size: { orientation: 'portrait', width: 11909, height: 16834 }, margin: { top: 202, bottom: 202, left: 432, right: 400, header: 706, footer: 706 } } },
       children: [
-        new Paragraph({
-          ...compactParagraphStyle,
-          alignment: AlignmentType.CENTER,
-          children: [new TextRun({ text: `CHECK SHEET HEAD UNIT`, bold: true, size: FONT_SIZE_TITLE })],
+        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: `CHECK SHEET HEAD UNIT`, bold: true, size: FONT_SIZE_TITLE })] }),
+        new Paragraph(""),
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({ children: [
+              new TableCell({ children: [new Paragraph("Tanggal")] }),
+              new TableCell({ children: [new Paragraph(new Date(inspection.tanggal).toLocaleDateString('id-ID'))] }),
+              new TableCell({ children: [new Paragraph("Nomor Head")] }),
+              new TableCell({ children: [new Paragraph(headData.head_code || 'N/A')] }),
+            ]}),
+            new TableRow({ children: [
+              new TableCell({ children: [new Paragraph("Jam")] }),
+              new TableCell({ children: [new Paragraph(new Date(inspection.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })) ] }),
+              new TableCell({ children: [new Paragraph("Pemeriksa")] }),
+              new TableCell({ children: [new Paragraph(profileData?.name || 'N/A')] }),
+            ]}),
+          ],
         }),
         new Paragraph(""),
         new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
           rows: [
-            new TableRow({
-              tableHeader: true,
-              children: [
-                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, size: FONT_SIZE_HEADER })] })]}),
-                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Bagian yang Diperiksa", bold: true, size: FONT_SIZE_HEADER })] })]}),
-                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Kondisi", bold: true, size: FONT_SIZE_HEADER })] })], columnSpan: 2 }),
-                new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Keterangan", bold: true, size: FONT_SIZE_HEADER })] })]}),
-              ],
-            }),
-            new TableRow({
-                tableHeader: true,
-                children: [ 
-                    new TableCell({children:[]}), new TableCell({children:[]}),
-                    new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "B", bold: true, size: FONT_SIZE })] })] }),
-                    new TableCell({ children: [new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "T", bold: true, size: FONT_SIZE })] })] }),
-                    new TableCell({ children: [] }),
-                ],
-            }),
+            new TableRow({ tableHeader: true, children: [
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "No", bold: true, size: FONT_SIZE_HEADER })] })]}),
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Bagian yang Diperiksa", bold: true, size: FONT_SIZE_HEADER })] })]}),
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Kondisi", bold: true, size: FONT_SIZE_HEADER })] })], columnSpan: 2 }),
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Keterangan", bold: true, size: FONT_SIZE_HEADER })] })]}),
+            ]}),
+            new TableRow({ tableHeader: true, children: [ 
+              new TableCell({children:[]}), new TableCell({children:[]}),
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "B", bold: true, size: FONT_SIZE })] })] }),
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "T", bold: true, size: FONT_SIZE })] })] }),
+              new TableCell({ children: [] }),
+            ]}),
             ...dataRows,
-            new TableRow({
-                children: [
-                    new TableCell({ 
-                        children: [new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, children: [ new TextRun({ text: "Note: Beri tanda (✓) pada kolom pilihan (Baik/Tidak), apabila ada kerusakan harap isi kolom keterangan", size: FONT_SIZE, italics: true }) ] })], 
-                        columnSpan: 5,
-                        borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-                    }),
-                ],
-            }),
-            new TableRow({
-                children: [
-                    new TableCell({ 
-                        children: [
-                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diperiksa Oleh", size: FONT_SIZE })] }),
-                            new Paragraph(""), new Paragraph(""),
-                            new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `( ${profileData?.name || '...................'} )`, size: FONT_SIZE })] }),
-                        ],
-                        columnSpan: 2,
-                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-                    }),
-                    new TableCell({ 
-                        children: [
-                            new Paragraph({ ...compactParagraphStyle, spacing: {...compactParagraphStyle.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diketahui Oleh", size: FONT_SIZE })] }),
-                            new Paragraph(""), new Paragraph(""),
-                            new Paragraph({ ...compactParagraphStyle, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(...................)", size: FONT_SIZE })] }),
-                        ],
-                        columnSpan: 3,
-                        borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
-                    }),
-                ],
-            }),
+            new TableRow({ children: [
+              new TableCell({ children: [new Paragraph({ ...compactParagraph, spacing: {...compactParagraph.spacing, before: 100}, children: [ new TextRun({ text: "Note: Beri tanda (✓) pada kolom pilihan (Baik/Tidak), apabila ada kerusakan harap isi kolom keterangan", size: FONT_SIZE, italics: true }) ] })], columnSpan: 5, borders: { top: { style: BorderStyle.SINGLE, size: 1 }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+            ]}),
+            new TableRow({ children: [
+              new TableCell({ children: [
+                new Paragraph({ ...compactParagraph, spacing: {...compactParagraph.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diperiksa Oleh", size: FONT_SIZE })] }),
+                new Paragraph(""), new Paragraph(""),
+                new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: `( ${profileData?.name || '...................'} )`, size: FONT_SIZE })] }),
+              ], columnSpan: 2, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+              new TableCell({ children: [
+                new Paragraph({ ...compactParagraph, spacing: {...compactParagraph.spacing, before: 100}, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "Diketahui Oleh", size: FONT_SIZE })] }),
+                new Paragraph(""), new Paragraph(""),
+                new Paragraph({ ...compactParagraph, alignment: AlignmentType.CENTER, children: [new TextRun({ text: "(...................)", size: FONT_SIZE })] }),
+              ], columnSpan: 3, borders: { top: { style: BorderStyle.NONE }, bottom: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } } }),
+            ]}),
           ],
         }),
       ],

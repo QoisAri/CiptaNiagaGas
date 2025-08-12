@@ -31,9 +31,9 @@ export default function Sidebar() {
   // Struktur navLinks diubah untuk mendukung sub-menu
   const navLinks = [
     { href: '/dashboard', name: 'Dashboard' },
-    { href: '/casis', name: 'Daftar Casis' },
-    { href: '/storage', name: 'Daftar Storage' },
-    { href: '/head', name: 'Daftar Head' },
+    { href: '/casis', name: 'Cheklist Casis' },
+    { href: '/storage', name: 'Cheklist Storage' },
+    { href: '/head', name: 'Cheklist Head' },
     { href: '/maintenance', name: 'Record Maintenance' },
     { href: '/history', name: 'History Pencucian' },
     { href: '/urgent', name: 'Urgent Fix' },

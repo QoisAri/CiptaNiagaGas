@@ -96,9 +96,16 @@ export function CasisDetailClient({ inspectionHeader, groups, deleteAction }: Pr
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
 
-      // Gunakan file-saver untuk mengunduh file
-      saveAs(blob, `Laporan-Inspeksi-${inspectionHeader.chassis?.chassis_code}.docx`);
+      // Gabungkan tanggal ke dalam nama file
+      const fileName = `Laporan-Inspeksi-${inspectionHeader.chassis?.chassis_code}-${dateString}.docx`;
+      
+      saveAs(blob, fileName);
 
     } catch (error) {
       console.error("Gagal mengunduh file Word:", error);

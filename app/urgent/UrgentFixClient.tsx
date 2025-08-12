@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { FaImage } from 'react-icons/fa';
-import { type ProblemReport } from './page'; // Impor tipe dari page.tsx
+import { FaImage, FaTrash } from 'react-icons/fa'; // Impor FaTrash
+import { type ProblemReport } from './page'; 
+import { deleteProblemReport } from './action'; // Impor action baru
 
 type Props = {
   reports: ProblemReport[];
@@ -43,11 +44,12 @@ export default function UrgentFixClient({ reports }: Props) {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Kode Aset</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Item Rusak</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Deskripsi Masalah</th>
-              {/* FIX: Tambahkan header untuk Foto */}
               <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Foto</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Pelapor</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Deadline</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Status</th>
+              {/* ## 1. TAMBAHKAN HEADER KOLOM AKSI ## */}
+              <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -59,7 +61,6 @@ export default function UrgentFixClient({ reports }: Props) {
                   <td className="px-4 py-3 border-b text-gray-900 font-semibold">{item.kodeAset}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.itemRusak}</td>
                   <td className="px-4 py-3 border-b text-gray-900 min-w-[200px]">{item.deskripsiMasalah}</td>
-                  {/* FIX: Tambahkan sel untuk tombol Foto */}
                   <td className="px-4 py-3 border-b text-gray-900 text-center">
                     {item.problemPhotoUrl ? (
                       <button onClick={() => handleShowImage(item.problemPhotoUrl!)} className="text-blue-600 hover:text-blue-800">
@@ -76,17 +77,32 @@ export default function UrgentFixClient({ reports }: Props) {
                       {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                     </span>
                   </td>
+                  {/* ## 2. TAMBAHKAN SEL UNTUK TOMBOL HAPUS ## */}
+                  <td className="px-4 py-3 border-b text-gray-900 text-center">
+                    <form
+                      action={deleteProblemReport}
+                      onSubmit={(e) => {
+                          if (!confirm('Apakah Anda yakin ingin menghapus laporan masalah ini?')) {
+                              e.preventDefault();
+                          }
+                      }}
+                    >
+                      <input type="hidden" name="reportId" value={item.id} />
+                      <button type="submit" className="text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition-colors">
+                          <FaTrash size={14} />
+                      </button>
+                    </form>
+                  </td>
                 </tr>
               ))
             ) : (
-              // FIX: Sesuaikan colSpan karena ada 9 kolom
-              <tr><td colSpan={9} className="text-center py-10 text-gray-500">Tidak ada laporan perbaikan mendesak.</td></tr>
+              // ## 3. PERBAIKI COLSPAN MENJADI 10 ##
+              <tr><td colSpan={10} className="text-center py-10 text-gray-500">Tidak ada laporan perbaikan mendesak.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* FIX: Tambahkan JSX untuk modal gambar */}
       {modalImageUrl && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50"
