@@ -30,7 +30,7 @@ export default function Sidebar() {
     { name: 'Cheklist Casis', href: '/casis', icon: Truck },
     { name: 'Cheklist Storage', href: '/storage', icon: Container },
     { name: 'Cheklist Head', href: '/head', icon: Car },
-    { name: 'Record Perbaikan', href: '/record-maintenance', icon: HardHat },
+    { name: 'Record Perbaikan', href: '/maintenance', icon: HardHat },
     { name: 'Perlu Perbaikan', href: '/perlu-perbaikan', icon: Wrench },
     { name: 'History Pencucian', href: '/history-pencucian', icon: Waves },
     { name: 'Urgent Fix', href: '/urgent-fix', icon: ShieldAlert },
