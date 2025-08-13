@@ -34,7 +34,8 @@ export default function Sidebar() {
     { href: '/casis', name: 'Cheklist Casis' },
     { href: '/storage', name: 'Cheklist Storage' },
     { href: '/head', name: 'Cheklist Head' },
-    { href: '/maintenance', name: 'Record Maintenance' },
+    { href: '/maintenance', name: 'Record Perbaikan' },
+    { href: '/perlu-perbaikan', name: 'Perlu Perbaikan' },
     { href: '/history', name: 'History Pencucian' },
     { href: '/urgent', name: 'Urgent Fix' },
     // Menu baru dengan sub-links
