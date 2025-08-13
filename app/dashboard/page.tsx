@@ -211,7 +211,7 @@ export default function DashboardPage() {
 
     return (
         <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">Fleet Monitoring</h1>
             
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
                 {isLoadingStats ? (
@@ -274,13 +274,7 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm text-center">
-                        <h3 className="font-bold text-gray-700 text-lg">Update Payout Method</h3>
-                        <p className="text-sm text-gray-500 mt-2 mb-4">Perbarui pengaturan Anda untuk penarikan dana.</p>
-                        <button className="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-colors">
-                            Tarik Dana
-                        </button>
-                    </div>
+                    
                 </div>
             </div>
         </div>

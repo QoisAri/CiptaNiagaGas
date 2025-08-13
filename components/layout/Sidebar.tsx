@@ -69,7 +69,7 @@ export default function Sidebar() {
       <div>
         <div className="h-16 flex items-center px-4 mb-6">
           <FileClock className="text-blue-400 mr-3" size={32} />
-          <h1 className="text-xl font-bold text-white">CNG Panel</h1>
+          <h1 className="text-xl font-bold text-white">Fleet Panel</h1>
         </div>
         <nav className="flex flex-col space-y-1">
           {navLinks.map((link) => {
