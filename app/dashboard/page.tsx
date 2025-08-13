@@ -1,68 +1,91 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import { useSelection } from '../context/SelectionContext';
+import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { createClient } from '@/utils/supabase/client';
+import { Truck, Car, Container, Wrench } from 'lucide-react';
 
 // Import untuk Grafik
 import dynamic from 'next/dynamic';
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-const Bar = dynamic(() => import('react-chartjs-2').then((mod) => mod.Bar), { ssr: false });
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+import { 
+    Chart as ChartJS, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler 
+} from 'chart.js';
+const Line = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), { ssr: false });
+ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
-const imageData = [
-    { src: '/CNG_Survey2.jpg', title: 'Volvo Chasis X90', },
-    { src: '/Vision_Mision.jpg', title: 'Acura Polester 3', },
-];
+// Komponen Kartu Metrik Kustom
+const StatCard = ({ title, value, icon: Icon, href }: {title: string, value: number, icon: any, href: string}) => {
+    return (
+        <Link href={href} className="block bg-white p-6 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+            <div className="flex justify-between items-center">
+                <div>
+                    <p className="text-sm text-gray-500">{title}</p>
+                    <p className="text-3xl font-bold text-gray-800 mt-1">
+                        <AnimatedCounter to={value} />
+                    </p>
+                </div>
+                <div className="p-3 bg-blue-100 rounded-full">
+                    <Icon className="text-blue-600" size={24} />
+                </div>
+            </div>
+        </Link>
+    );
+};
 
-// Komponen animasi header (tidak ada perubahan)
-const HeaderAnimation = () => (
-    <div className="relative w-full h-28 bg-gray-900 rounded-xl overflow-hidden shadow-lg flex items-center justify-center">
-        <div className="absolute inset-0 z-0">
-            <div className="aurora-layer aurora-1"></div>
-            <div className="aurora-layer aurora-2"></div>
-            <div className="aurora-layer aurora-3"></div>
-            <div className="aurora-layer aurora-4"></div>
-        </div>
-        <h2 className="relative z-10 text-2xl font-bold text-white text-shadow">
-            Selamat Datang di Panel Admin
-        </h2>
-        <style jsx>{`
-            .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-            .aurora-layer { position: absolute; width: 200%; height: 200%; opacity: 0.25; filter: blur(60px); mix-blend-mode: screen; border-radius: 50%; }
-            .aurora-1 { background: radial-gradient(circle, #3b82f6 0%, transparent 60%); top: -50%; left: -50%; animation: moveAurora 15s cubic-bezier(0.42, 0, 0.58, 1) infinite; }
-            .aurora-2 { background: radial-gradient(circle, #14b8a6 0%, transparent 60%); top: -50%; right: -50%; animation: moveAurora 17s cubic-bezier(0.42, 0, 0.58, 1) infinite reverse; }
-            .aurora-3 { background: radial-gradient(circle, #8b5cf6 0%, transparent 60%); bottom: -50%; left: -50%; animation: moveAurora 19s cubic-bezier(0.42, 0, 0.58, 1) infinite; }
-            .aurora-4 { background: radial-gradient(circle, #e0f2fe 0%, transparent 70%); bottom: -50%; right: -50%; animation: moveAurora 21s cubic-bezier(0.42, 0, 0.58, 1) infinite reverse; }
-            @keyframes moveAurora {
-                0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 0.25; }
-                50% { transform: translate(20%, -10%) rotate(180deg) scale(1.2); opacity: 0.4; }
-                100% { transform: translate(0, 0) rotate(360deg) scale(1); opacity: 0.25; }
-            }
-        `}</style>
-    </div>
-);
 
 export default function DashboardPage() {
-    const { selections, isLoading: isSelectionLoading } = useSelection();
     const { session, isLoading: isAuthLoading } = useAuth();
-    const [activeIndex, setActiveIndex] = useState(0);
-    type ChartMode = 'daily' | 'weekly' | 'monthly' | 'yearly';
-    const [chartMode, setChartMode] = useState<ChartMode>('monthly');
+    const [statsData, setStatsData] = useState({ 
+        chassisCount: 0, 
+        headsCount: 0, 
+        storagesCount: 0, 
+        urgentCount: 0 
+    });
     const [reportSummary, setReportSummary] = useState({ daily: 0, weekly: 0, monthly: 0, yearly: 0 });
-    const [chartDataSets, setChartDataSets] = useState<Record<ChartMode, number[]>>({ daily: [], weekly: [], monthly: [], yearly: [] });
+    const [chartDataSets, setChartDataSets] = useState<Record<string, number[]>>({ 
+        daily: [], weekly: [], monthly: [], yearly: [] 
+    });
+    const [chartMode, setChartMode] = useState<string>('daily');
     const [isLoadingChart, setIsLoadingChart] = useState(true);
+    const [isLoadingStats, setIsLoadingStats] = useState(true);
 
     const supabase = createClient();
 
-    // ## FUNGSI PENGAMBILAN DATA YANG SUDAH DIPERBAIKI ##
+    // Fungsi untuk mengambil data statistik (jumlah total aset)
+    const fetchStatsData = useCallback(async () => {
+        setIsLoadingStats(true);
+        try {
+            const [
+                { count: chassisCount },
+                { count: headsCount },
+                { count: storagesCount },
+                { count: urgentCount }
+            ] = await Promise.all([
+                supabase.from('chassis').select('*', { count: 'exact', head: true }),
+                supabase.from('heads').select('*', { count: 'exact', head: true }),
+                supabase.from('storages').select('*', { count: 'exact', head: true }),
+                supabase.from('problem_reports').select('*', { count: 'exact', head: true }).in('status', ['Baru', 'Menunggu', 'Dikerjakan'])
+            ]);
+            setStatsData({
+                chassisCount: chassisCount ?? 0,
+                headsCount: headsCount ?? 0,
+                storagesCount: storagesCount ?? 0,
+                urgentCount: urgentCount ?? 0,
+            });
+        } catch (error) {
+            console.error("Error fetching stats data:", error);
+        } finally {
+            setIsLoadingStats(false);
+        }
+    }, [supabase]);
+
+    // Fungsi untuk mengambil data grafik
     const fetchChartData = useCallback(async () => {
         setIsLoadingChart(true);
         const { data: reports, error } = await supabase
-            .from('problem_reports') // Pastikan nama tabel ini sesuai dengan di database Anda
+            .from('problem_reports')
             .select('created_at');
 
         if (error) {
@@ -73,11 +96,9 @@ export default function DashboardPage() {
 
         const now = new Date();
         const todayStr = now.toDateString();
-        
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeek = new Date(startOfToday);
         startOfWeek.setDate(startOfWeek.getDate() - startOfToday.getDay());
-        
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfYear = new Date(now.getFullYear(), 0, 1);
 
@@ -86,25 +107,19 @@ export default function DashboardPage() {
         const monthlyCounts = Array(12).fill(0);
         const yearlyCounts: Record<string, number> = {};
         
-        let dailyTotal = 0;
-        let weeklyTotal = 0;
-        let monthlyTotal = 0;
-        let yearlyTotal = 0;
+        let dailyTotal = 0, weeklyTotal = 0, monthlyTotal = 0, yearlyTotal = 0;
 
         reports.forEach(report => {
             const reportDate = new Date(report.created_at);
-
             if (reportDate >= startOfYear) yearlyTotal++;
             if (reportDate.getFullYear() >= now.getFullYear() - 2) {
-                 const yearKey = reportDate.getFullYear().toString();
-                 yearlyCounts[yearKey] = (yearlyCounts[yearKey] || 0) + 1;
+                const yearKey = reportDate.getFullYear().toString();
+                yearlyCounts[yearKey] = (yearlyCounts[yearKey] || 0) + 1;
             }
-
             if (reportDate >= startOfMonth) monthlyTotal++;
             if (reportDate.getFullYear() === now.getFullYear()) {
-                 monthlyCounts[reportDate.getMonth()]++;
+                monthlyCounts[reportDate.getMonth()]++;
             }
-           
             if (reportDate >= startOfWeek) weeklyTotal++;
             if(reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()){
                 const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
@@ -113,7 +128,6 @@ export default function DashboardPage() {
                     weeklyCounts[weekOfMonth]++;
                 }
             }
-            
             if (reportDate.toDateString() === todayStr) dailyTotal++;
             if(reportDate >= startOfWeek) {
                 dailyCounts[reportDate.getDay()]++;
@@ -129,46 +143,64 @@ export default function DashboardPage() {
         setIsLoadingChart(false);
     }, [supabase]);
 
-    // ## useEffect UNTUK REALTIME YANG SUDAH DIPERBAIKI ##
+    // useEffect utama untuk mengambil semua data dan subscribe ke realtime
     useEffect(() => {
+        fetchStatsData();
         fetchChartData();
 
         const channel = supabase
-            .channel('realtime-reports-dashboard')
-            .on('postgres_changes', 
-                { event: '*', schema: 'public', table: 'problem_reports' },
-                (payload) => {
-                    console.log('Perubahan terdeteksi, mengambil data ulang!', payload);
-                    fetchChartData();
-                }
-            )
+            .channel('realtime-dashboard-all')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'problem_reports' }, () => {
+                fetchChartData();
+                fetchStatsData();
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'chassis' }, fetchStatsData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'heads' }, fetchStatsData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'storages' }, fetchStatsData)
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [fetchChartData]);
+        return () => { supabase.removeChannel(channel); };
+    }, [fetchChartData, fetchStatsData]);
+    
+    // Data untuk kartu metrik
+    const stats = [
+        { title: 'Total Casis', value: statsData.chassisCount, icon: Truck, href: '/casis' },
+        { title: 'Total Head', value: statsData.headsCount, icon: Car, href: '/head' },
+        { title: 'Total Storage', value: statsData.storagesCount, icon: Container, href: '/storage' },
+        { title: 'Perlu Perbaikan', value: statsData.urgentCount, icon: Wrench, href: '/perlu-perbaikan' }
+    ];
 
-    // useEffect untuk carousel
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setActiveIndex(prevIndex => (prevIndex + 1) % imageData.length);
-        }, 5000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const chartLabels: Record<ChartMode, string[]> = {
+    const chartLabels: Record<string, string[]> = {
         daily: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
         weekly: ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'],
         monthly: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
         yearly: [(new Date().getFullYear() - 2).toString(), (new Date().getFullYear() - 1).toString(), new Date().getFullYear().toString()]
     };
-    const chartData = { labels: chartLabels[chartMode], datasets: [{ label: 'Laporan', data: chartDataSets[chartMode], backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderRadius: 5, borderWidth: 1 }] };
-    const chartOptions = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: `Grafik Laporan ${chartMode.charAt(0).toUpperCase() + chartMode.slice(1)}` } } };
-
-    if (isSelectionLoading || isAuthLoading || !session) {
+    const chartData = {
+        labels: chartLabels[chartMode],
+        datasets: [{
+            label: 'Laporan Masuk',
+            data: chartDataSets[chartMode],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#3b82f6',
+            pointBorderColor: '#fff',
+            pointHoverRadius: 7,
+            pointHoverBorderWidth: 2,
+        }]
+    };
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false }, title: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { grid: { color: '#e5e7eb' } } }
+    };
+    
+    if (isAuthLoading || !session) {
         return (
-            <div className="flex justify-center items-center h-screen">
+            <div className="flex justify-center items-center h-screen bg-gray-50">
                 <div className="text-center">
                     <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-600"></div>
                     <p className="mt-4 text-gray-600">Memuat Data...</p>
@@ -177,42 +209,31 @@ export default function DashboardPage() {
         );
     }
 
-    const currentCarouselItem = imageData[activeIndex];
-    const currentSummaryValue = reportSummary[chartMode];
-    const currentSummaryLabel = {
-        daily: 'Laporan Hari Ini',
-        weekly: 'Laporan Minggu Ini',
-        monthly: 'Laporan Bulan Ini',
-        yearly: 'Laporan Tahun Ini'
-    }[chartMode];
-
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-            </div>
-
-            <HeaderAnimation />
+        <div className="p-4 sm:p-6 bg-gray-50 min-h-screen">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">Dashboard</h1>
             
-            <div className="bg-white rounded-xl shadow-md p-6">
-                <div className="relative aspect-video max-h-[500px] w-full overflow-hidden rounded-lg">
-                    <Image src={currentCarouselItem.src} alt={currentCarouselItem.title} fill className="object-cover" />
-                </div>
-                <div className="flex justify-center gap-2 mt-4">
-                    {imageData.map((_, i) => (
-                        <button key={i} className={`w-3 h-3 rounded-full transition-all ${i === activeIndex ? 'bg-blue-600 scale-125' : 'bg-gray-300'}`} onClick={() => setActiveIndex(i)} />
-                    ))}
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
+                {isLoadingStats ? (
+                    Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="bg-white p-6 rounded-2xl shadow-sm h-[108px] animate-pulse">
+                            <div className="h-4 bg-gray-200 rounded w-1/2 mb-4"></div>
+                            <div className="h-8 bg-gray-300 rounded w-1/3"></div>
+                        </div>
+                    ))
+                ) : (
+                    stats.map(stat => <StatCard key={stat.title} {...stat} />)
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
+                <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm">
                     <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold text-gray-700">Grafik Laporan</h3>
+                        <h3 className="font-bold text-gray-700 text-lg">Laporan Masuk</h3>
                         <select 
                             value={chartMode} 
-                            onChange={(e) => setChartMode(e.target.value as ChartMode)} 
-                            className="border rounded-md px-3 py-1 text-sm bg-gray-50 text-black"
+                            onChange={(e) => setChartMode(e.target.value)} 
+                            className="border rounded-md px-3 py-1 text-sm bg-gray-50 text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="daily">Harian</option>
                             <option value="weekly">Mingguan</option>
@@ -220,32 +241,48 @@ export default function DashboardPage() {
                             <option value="yearly">Tahunan</option>
                         </select>
                     </div>
-                    <div className="h-72 relative">
+                    <div className="h-80 relative">
                         {isLoadingChart ? (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50">
-                                <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-blue-600"></div>
-                            </div>
+                           <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10">
+                             <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-blue-600"></div>
+                           </div>
                         ) : (
-                            <Bar options={chartOptions} data={chartData} />
+                            <Line options={chartOptions as any} data={chartData} />
                         )}
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-md p-6">
-                    <h3 className="font-bold text-gray-700 mb-4">Ringkasan Laporan</h3>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg">
-                            <span className="font-semibold text-gray-600">{currentSummaryLabel}</span>
-                            <span className="font-bold text-2xl text-blue-600">
-                                <AnimatedCounter to={currentSummaryValue} />
-                            </span>
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm">
+                        <h3 className="font-bold text-gray-700 text-lg mb-4">Ringkasan Laporan</h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500">Laporan Hari Ini</span>
+                                <span className="font-bold text-gray-800"><AnimatedCounter to={reportSummary.daily} /></span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500">Laporan Minggu Ini</span>
+                                <span className="font-bold text-gray-800"><AnimatedCounter to={reportSummary.weekly} /></span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-gray-500">Laporan Bulan Ini</span>
+                                <span className="font-bold text-gray-800"><AnimatedCounter to={reportSummary.monthly} /></span>
+                            </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-gray-500">Laporan Tahun Ini</span>
+                                <span className="font-bold text-gray-800"><AnimatedCounter to={reportSummary.yearly} /></span>
+                            </div>
                         </div>
-                        <div className="text-sm text-gray-500 pt-4">
-                            <p>Data ini diperbarui secara real-time berdasarkan laporan masalah yang masuk.</p>
-                        </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm text-center">
+                        <h3 className="font-bold text-gray-700 text-lg">Update Payout Method</h3>
+                        <p className="text-sm text-gray-500 mt-2 mb-4">Perbarui pengaturan Anda untuk penarikan dana.</p>
+                        <button className="w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition-colors">
+                            Tarik Dana
+                        </button>
                     </div>
                 </div>
             </div>
-        </div> 	
+        </div>
     );
 }
