@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { DownloadButton } from './DownloadButton';
 
-// Komponen FilterForm (tidak diexport default)
+// Komponen FilterForm (tidak ada perubahan)
 function FilterForm({ storage_code, feet, pemeriksa, }: { storage_code?: string; feet?: string; pemeriksa?: string; }) {
   return (
     <form className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg border items-end">
@@ -33,11 +33,11 @@ function FilterForm({ storage_code, feet, pemeriksa, }: { storage_code?: string;
   );
 }
 
-// Tipe data yang dibutuhkan
+// Tipe data (tidak ada perubahan)
 type InspectionResult = { kondisi: string | null; };
 type Inspection = { id: string; tanggal: string; storages: { storage_code: string | null; feet: number | null; } | null; profiles: { name: string | null; } | null; inspection_results: InspectionResult[]; };
 
-// Komponen Halaman (yang diexport default)
+// Komponen Halaman Utama
 export default async function StorageListPage({ searchParams, }: { searchParams: { storage_code?: string; feet?: string; pemeriksa?: string; }; }) {
   const supabase = createClient();
   const storageCode = searchParams.storage_code;
@@ -67,6 +67,8 @@ export default async function StorageListPage({ searchParams, }: { searchParams:
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Storage</h1>
+        {/* ## TOMBOL UNDUH DITAMBAHKAN DI SINI ## */}
+        <DownloadButton />
       </div>
       <FilterForm storage_code={storageCode} feet={feet} pemeriksa={pemeriksa} />
       <div className="bg-white shadow-md rounded-lg overflow-hidden">

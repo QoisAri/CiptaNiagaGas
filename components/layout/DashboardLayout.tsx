@@ -2,12 +2,14 @@
 
 import { ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // <-- 1. Impor useRouter
 import { useAuth } from '../../app/context/AuthContext';
+import { createClient } from '@/utils/supabase/client'; // <-- 2. Impor createClient
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { session, logout } = useAuth();
+  const router = useRouter(); // <-- 3. Panggil hook useRouter
+  const { session, isLoading } = useAuth();
 
   const navItems = [
     { name: 'Dashboard', path: '/' },
@@ -18,6 +20,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     { name: 'History Pencucian', path: '/washing' },
     { name: 'Urgent Fix', path: '/urgent' },
   ];
+
+  // ==========================================================
+  // ## 4. TAMBAHKAN FUNGSI LOGOUT DI SINI ##
+  // ==========================================================
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.refresh(); // Membersihkan cache
+    router.push('/login'); // Arahkan ke halaman login
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -33,7 +45,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 key={item.name}
                 href={item.path}
                 className={`block px-4 py-2 my-1 rounded-md transition-all duration-200 ${
-                  // Logika untuk highlight menu yang aktif, termasuk halaman detail
                   pathname === item.path || (pathname.startsWith(item.path) && item.path !== '/')
                     ? 'bg-blue-600 text-white font-semibold shadow-md'
                     : 'text-slate-600 hover:bg-blue-100'
@@ -46,14 +57,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
           <div className="p-4 border-t border-gray-200">
             {session ? (
-               <button
-                onClick={logout}
+                <button
+                // ## 5. GUNAKAN FUNGSI handleLogout ##
+                onClick={handleLogout}
                 className="w-full text-left px-4 py-2 rounded-md transition text-slate-600 hover:bg-red-100 hover:text-red-700 font-semibold"
               >
                 Logout
               </button>
             ) : (
-               <Link
+                <Link
                 href="/login"
                 className="block text-center bg-green-500 hover:bg-green-600 text-white font-bold px-4 py-2 rounded-md transition"
               >
