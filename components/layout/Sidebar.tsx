@@ -32,7 +32,7 @@ export default function Sidebar() {
     { name: 'Cheklist Head', href: '/head', icon: Car },
     { name: 'Record Perbaikan', href: '/maintenance', icon: HardHat },
     { name: 'Perlu Perbaikan', href: '/perlu-perbaikan', icon: Wrench },
-    { name: 'History Pencucian', href: '/history-pencucian', icon: Waves },
+    { name: 'History Pencucian', href: '/history', icon: Waves },
     { name: 'Urgent Fix', href: '/urgent', icon: ShieldAlert },
     {
       name: 'Aset Aktif',
