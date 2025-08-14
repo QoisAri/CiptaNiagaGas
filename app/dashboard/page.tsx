@@ -53,7 +53,6 @@ export default function DashboardPage() {
 
     const supabase = createClient();
 
-    // Fungsi untuk mengambil data statistik (jumlah total aset)
     const fetchStatsData = useCallback(async () => {
         setIsLoadingStats(true);
         try {
@@ -81,88 +80,103 @@ export default function DashboardPage() {
         }
     }, [supabase]);
 
-    // Fungsi untuk mengambil data grafik
-    const fetchChartData = useCallback(async () => {
-        setIsLoadingChart(true);
-        const { data: reports, error } = await supabase
-            .from('problem_reports')
-            .select('created_at');
+// Ganti fungsi lama dengan yang ini di /app/dashboard/page.tsx
 
-        if (error) {
-            console.error("Error fetching chart data:", error);
-            setIsLoadingChart(false);
-            return;
-        }
+const fetchChartData = useCallback(async () => {
+    setIsLoadingChart(true);
 
-        const now = new Date();
-        const todayStr = now.toDateString();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const startOfWeek = new Date(startOfToday);
-        startOfWeek.setDate(startOfWeek.getDate() - startOfToday.getDay());
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const startOfYear = new Date(now.getFullYear(), 0, 1);
+    // 1. UBAH: Ambil data dari tabel 'inspections'
+    const { data: inspections, error } = await supabase
+        .from('inspections')
+        .select('tanggal'); // Ambil kolom 'tanggal'
 
-        const dailyCounts = Array(7).fill(0);
-        const weeklyCounts = Array(4).fill(0);
-        const monthlyCounts = Array(12).fill(0);
-        const yearlyCounts: Record<string, number> = {};
-        
-        let dailyTotal = 0, weeklyTotal = 0, monthlyTotal = 0, yearlyTotal = 0;
-
-        reports.forEach(report => {
-            const reportDate = new Date(report.created_at);
-            if (reportDate >= startOfYear) yearlyTotal++;
-            if (reportDate.getFullYear() >= now.getFullYear() - 2) {
-                const yearKey = reportDate.getFullYear().toString();
-                yearlyCounts[yearKey] = (yearlyCounts[yearKey] || 0) + 1;
-            }
-            if (reportDate >= startOfMonth) monthlyTotal++;
-            if (reportDate.getFullYear() === now.getFullYear()) {
-                monthlyCounts[reportDate.getMonth()]++;
-            }
-            if (reportDate >= startOfWeek) weeklyTotal++;
-            if(reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()){
-                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-                const weekOfMonth = Math.floor((reportDate.getDate() + firstDayOfMonth - 1) / 7);
-                if (weekOfMonth >= 0 && weekOfMonth < 4) {
-                    weeklyCounts[weekOfMonth]++;
-                }
-            }
-            if (reportDate.toDateString() === todayStr) dailyTotal++;
-            if(reportDate >= startOfWeek) {
-                dailyCounts[reportDate.getDay()]++;
-            }
-        });
-        
-        const currentYear = now.getFullYear();
-        const yearLabels = [(currentYear - 2).toString(), (currentYear - 1).toString(), currentYear.toString()];
-        const finalYearlyCounts = yearLabels.map(year => yearlyCounts[year] || 0);
-
-        setReportSummary({ daily: dailyTotal, weekly: weeklyTotal, monthly: monthlyTotal, yearly: yearlyTotal });
-        setChartDataSets({ daily: dailyCounts, weekly: weeklyCounts, monthly: monthlyCounts, yearly: finalYearlyCounts });
+    if (error) {
+        console.error("Error fetching chart data:", error);
         setIsLoadingChart(false);
-    }, [supabase]);
+        return;
+    }
 
-    // useEffect utama untuk mengambil semua data dan subscribe ke realtime
-    useEffect(() => {
-        fetchStatsData();
-        fetchChartData();
+    if (!inspections) {
+        setIsLoadingChart(false);
+        return;
+    }
 
-        const channel = supabase
-            .channel('realtime-dashboard-all')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'problem_reports' }, () => {
-                fetchChartData();
-                fetchStatsData();
-            })
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'chassis' }, fetchStatsData)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'heads' }, fetchStatsData)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'storages' }, fetchStatsData)
-            .subscribe();
-
-        return () => { supabase.removeChannel(channel); };
-    }, [fetchChartData, fetchStatsData]);
+    const now = new Date();
+    const startOfTodayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeekLocal = new Date(startOfTodayLocal);
+    startOfWeekLocal.setDate(startOfWeekLocal.getDate() - startOfTodayLocal.getDay());
+    const startOfMonthLocal = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYearLocal = new Date(now.getFullYear(), 0, 1);
     
-    // Data untuk kartu metrik
+    const dailyCounts = Array(7).fill(0);
+    const weeklyCounts = Array(4).fill(0);
+    const monthlyCounts = Array(12).fill(0);
+    const yearlyCounts: Record<string, number> = {};
+    
+    let dailyTotal = 0, weeklyTotal = 0, monthlyTotal = 0, yearlyTotal = 0;
+
+    inspections.forEach(inspection => {
+        // 2. UBAH: Gunakan 'inspection.tanggal' sebagai sumber tanggal
+        const reportDate = new Date(inspection.tanggal);
+
+        // Sisa logika kalkulasi di bawah ini tidak berubah
+        if (reportDate >= startOfYearLocal) yearlyTotal++;
+        if (reportDate.getFullYear() >= now.getFullYear() - 2) {
+            const yearKey = reportDate.getFullYear().toString();
+            yearlyCounts[yearKey] = (yearlyCounts[yearKey] || 0) + 1;
+        }
+        if (reportDate >= startOfMonthLocal) monthlyTotal++;
+        if (reportDate.getFullYear() === now.getFullYear()) {
+            monthlyCounts[reportDate.getMonth()]++;
+        }
+        if (reportDate >= startOfWeekLocal) {
+             weeklyTotal++;
+             dailyCounts[reportDate.getDay()]++;
+        }
+        if(reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()){
+            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+            const weekOfMonth = Math.floor((reportDate.getDate() + firstDayOfMonth - 1) / 7);
+            if (weekOfMonth >= 0 && weekOfMonth < 4) {
+                weeklyCounts[weekOfMonth]++;
+            }
+        }
+        if (reportDate >= startOfTodayLocal && reportDate < new Date(startOfTodayLocal.getTime() + 24 * 60 * 60 * 1000)) {
+            dailyTotal++;
+        }
+    });
+    
+    const currentYear = now.getFullYear();
+    const yearLabels = [(currentYear - 2).toString(), (currentYear - 1).toString(), currentYear.toString()];
+    const finalYearlyCounts = yearLabels.map(year => yearlyCounts[year] || 0);
+
+    setReportSummary({ daily: dailyTotal, weekly: weeklyTotal, monthly: monthlyTotal, yearly: yearlyTotal });
+    setChartDataSets({ daily: dailyCounts, weekly: weeklyCounts, monthly: monthlyCounts, yearly: finalYearlyCounts });
+    setIsLoadingChart(false);
+}, [supabase]);
+
+    useEffect(() => {
+    fetchStatsData();
+    fetchChartData();
+
+    const channel = supabase
+        .channel('realtime-dashboard-all')
+        // 3. UBAH: Dengarkan perubahan pada tabel 'inspections'
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, 
+            (payload) => {
+                console.log('Inspeksi baru terdeteksi, memuat ulang data...', payload);
+                fetchChartData(); // Panggil fetchChartData saat ada inspeksi baru
+            }
+        )
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'problem_reports' }, fetchStatsData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'chassis' }, fetchStatsData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'heads' }, fetchStatsData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'storages' }, fetchStatsData)
+        .subscribe();
+
+    return () => {
+        supabase.removeChannel(channel);
+    };
+}, [supabase, fetchChartData, fetchStatsData]);
     const stats = [
         { title: 'Total Casis', value: statsData.chassisCount, icon: Truck, href: '/casis' },
         { title: 'Total Head', value: statsData.headsCount, icon: Car, href: '/head' },
