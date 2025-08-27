@@ -7,7 +7,7 @@ import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { createClient } from '@/utils/supabase/client';
 import { Truck, Car, Container, Wrench } from 'lucide-react';
 
-// Import untuk Grafik
+// Import untuk Grafik (Chart.js)
 import dynamic from 'next/dynamic';
 import { 
     Chart as ChartJS, CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler 
@@ -15,7 +15,7 @@ import {
 const Line = dynamic(() => import('react-chartjs-2').then((mod) => mod.Line), { ssr: false });
 ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Title, Tooltip, Legend, Filler);
 
-// Komponen Kartu Metrik Kustom
+// Komponen Kartu Statistik
 const StatCard = ({ title, value, icon: Icon, href }: {title: string, value: number, icon: any, href: string}) => {
     return (
         <Link href={href} className="block bg-white p-6 rounded-2xl shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
@@ -37,22 +37,32 @@ const StatCard = ({ title, value, icon: Icon, href }: {title: string, value: num
 
 export default function DashboardPage() {
     const { session, isLoading: isAuthLoading } = useAuth();
+    const supabase = createClient();
+
+    // State untuk data statistik utama (kartu)
     const [statsData, setStatsData] = useState({ 
         chassisCount: 0, 
         headsCount: 0, 
         storagesCount: 0, 
         urgentCount: 0 
     });
+    
+    // State untuk data ringkasan laporan
     const [reportSummary, setReportSummary] = useState({ daily: 0, weekly: 0, monthly: 0, yearly: 0 });
+    
+    // State untuk data grafik
     const [chartDataSets, setChartDataSets] = useState<Record<string, number[]>>({ 
         daily: [], weekly: [], monthly: [], yearly: [] 
     });
     const [chartMode, setChartMode] = useState<string>('daily');
+    
+    // State untuk status loading
     const [isLoadingChart, setIsLoadingChart] = useState(true);
     const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-    const supabase = createClient();
-
+    // Fungsi untuk mengambil data statistik (kartu atas)
+    // useCallback digunakan agar fungsi ini tidak dibuat ulang setiap kali render,
+    // sehingga lebih efisien saat digunakan di dalam useEffect.
     const fetchStatsData = useCallback(async () => {
         setIsLoadingStats(true);
         try {
@@ -80,108 +90,106 @@ export default function DashboardPage() {
         }
     }, [supabase]);
 
-// Ganti fungsi lama dengan yang ini di /app/dashboard/page.tsx
+    // Fungsi untuk mengambil data grafik dan ringkasan laporan
+    const fetchChartData = useCallback(async () => {
+        setIsLoadingChart(true);
+        const { data: inspections, error } = await supabase
+            .from('inspections')
+            .select('tanggal');
 
-const fetchChartData = useCallback(async () => {
-    setIsLoadingChart(true);
-
-    // 1. UBAH: Ambil data dari tabel 'inspections'
-    const { data: inspections, error } = await supabase
-        .from('inspections')
-        .select('tanggal'); // Ambil kolom 'tanggal'
-
-    if (error) {
-        console.error("Error fetching chart data:", error);
-        setIsLoadingChart(false);
-        return;
-    }
-
-    if (!inspections) {
-        setIsLoadingChart(false);
-        return;
-    }
-
-    const now = new Date();
-    const startOfTodayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfWeekLocal = new Date(startOfTodayLocal);
-    startOfWeekLocal.setDate(startOfWeekLocal.getDate() - startOfTodayLocal.getDay());
-    const startOfMonthLocal = new Date(now.getFullYear(), now.getMonth(), 1);
-    const startOfYearLocal = new Date(now.getFullYear(), 0, 1);
-    
-    const dailyCounts = Array(7).fill(0);
-    const weeklyCounts = Array(4).fill(0);
-    const monthlyCounts = Array(12).fill(0);
-    const yearlyCounts: Record<string, number> = {};
-    
-    let dailyTotal = 0, weeklyTotal = 0, monthlyTotal = 0, yearlyTotal = 0;
-
-    inspections.forEach(inspection => {
-        // 2. UBAH: Gunakan 'inspection.tanggal' sebagai sumber tanggal
-        const reportDate = new Date(inspection.tanggal);
-
-        // Sisa logika kalkulasi di bawah ini tidak berubah
-        if (reportDate >= startOfYearLocal) yearlyTotal++;
-        if (reportDate.getFullYear() >= now.getFullYear() - 2) {
-            const yearKey = reportDate.getFullYear().toString();
-            yearlyCounts[yearKey] = (yearlyCounts[yearKey] || 0) + 1;
+        if (error || !inspections) {
+            console.error("Error fetching chart data:", error);
+            setIsLoadingChart(false);
+            return;
         }
-        if (reportDate >= startOfMonthLocal) monthlyTotal++;
-        if (reportDate.getFullYear() === now.getFullYear()) {
-            monthlyCounts[reportDate.getMonth()]++;
-        }
-        if (reportDate >= startOfWeekLocal) {
-             weeklyTotal++;
-             dailyCounts[reportDate.getDay()]++;
-        }
-        if(reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()){
-            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-            const weekOfMonth = Math.floor((reportDate.getDate() + firstDayOfMonth - 1) / 7);
-            if (weekOfMonth >= 0 && weekOfMonth < 4) {
-                weeklyCounts[weekOfMonth]++;
+
+        // Logika kalkulasi data (sudah benar, tidak perlu diubah)
+        const now = new Date();
+        const startOfTodayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeekLocal = new Date(startOfTodayLocal);
+        startOfWeekLocal.setDate(startOfWeekLocal.getDate() - startOfTodayLocal.getDay());
+        const startOfMonthLocal = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfYearLocal = new Date(now.getFullYear(), 0, 1);
+        
+        const dailyCounts = Array(7).fill(0);
+        const weeklyCounts = Array(4).fill(0);
+        const monthlyCounts = Array(12).fill(0);
+        const yearlyCounts: Record<string, number> = {};
+        
+        let dailyTotal = 0, weeklyTotal = 0, monthlyTotal = 0, yearlyTotal = 0;
+
+        inspections.forEach(inspection => {
+            const reportDate = new Date(inspection.tanggal);
+            if (reportDate >= startOfYearLocal) yearlyTotal++;
+            if (reportDate.getFullYear() >= now.getFullYear() - 2) {
+                const yearKey = reportDate.getFullYear().toString();
+                yearlyCounts[yearKey] = (yearlyCounts[yearKey] || 0) + 1;
             }
-        }
-        if (reportDate >= startOfTodayLocal && reportDate < new Date(startOfTodayLocal.getTime() + 24 * 60 * 60 * 1000)) {
-            dailyTotal++;
-        }
-    });
-    
-    const currentYear = now.getFullYear();
-    const yearLabels = [(currentYear - 2).toString(), (currentYear - 1).toString(), currentYear.toString()];
-    const finalYearlyCounts = yearLabels.map(year => yearlyCounts[year] || 0);
+            if (reportDate >= startOfMonthLocal) monthlyTotal++;
+            if (reportDate.getFullYear() === now.getFullYear()) {
+                monthlyCounts[reportDate.getMonth()]++;
+            }
+            if (reportDate >= startOfWeekLocal) {
+                weeklyTotal++;
+                dailyCounts[reportDate.getDay()]++;
+            }
+            if(reportDate.getFullYear() === now.getFullYear() && reportDate.getMonth() === now.getMonth()){
+                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
+                const weekOfMonth = Math.floor((reportDate.getDate() + firstDayOfMonth - 1) / 7);
+                if (weekOfMonth >= 0 && weekOfMonth < 4) {
+                    weeklyCounts[weekOfMonth]++;
+                }
+            }
+            if (reportDate >= startOfTodayLocal && reportDate < new Date(startOfTodayLocal.getTime() + 24 * 60 * 60 * 1000)) {
+                dailyTotal++;
+            }
+        });
+        
+        const currentYear = now.getFullYear();
+        const yearLabels = [(currentYear - 2).toString(), (currentYear - 1).toString(), currentYear.toString()];
+        const finalYearlyCounts = yearLabels.map(year => yearlyCounts[year] || 0);
 
-    setReportSummary({ daily: dailyTotal, weekly: weeklyTotal, monthly: monthlyTotal, yearly: yearlyTotal });
-    setChartDataSets({ daily: dailyCounts, weekly: weeklyCounts, monthly: monthlyCounts, yearly: finalYearlyCounts });
-    setIsLoadingChart(false);
-}, [supabase]);
+        setReportSummary({ daily: dailyTotal, weekly: weeklyTotal, monthly: monthlyTotal, yearly: yearlyTotal });
+        setChartDataSets({ daily: dailyCounts, weekly: weeklyCounts, monthly: monthlyCounts, yearly: finalYearlyCounts });
+        setIsLoadingChart(false);
+    }, [supabase]);
 
+    // useEffect inilah inti dari fitur real-time
     useEffect(() => {
-    fetchStatsData();
-    fetchChartData();
+        // 1. Panggil fungsi fetch untuk mendapatkan data awal saat komponen dimuat
+        fetchStatsData();
+        fetchChartData();
 
-    const channel = supabase
-        .channel('realtime-dashboard-all')
-        // 3. UBAH: Dengarkan perubahan pada tabel 'inspections'
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, 
-            (payload) => {
-                console.log('Inspeksi baru terdeteksi, memuat ulang data...', payload);
-                fetchChartData(); // Panggil fetchChartData saat ada inspeksi baru
-            }
-        )
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'problem_reports' }, fetchStatsData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'chassis' }, fetchStatsData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'heads' }, fetchStatsData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'storages' }, fetchStatsData)
-        .subscribe();
+        // 2. Buat channel subscription untuk mendengarkan perubahan dari database
+        const channel = supabase
+            .channel('realtime-dashboard-all')
+            // Dengarkan perubahan (INSERT, UPDATE, DELETE) pada tabel 'inspections'
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, 
+                (payload) => {
+                    console.log('Perubahan pada tabel inspeksi, memuat ulang data grafik...', payload);
+                    // Jika ada perubahan, panggil ulang fungsi untuk mengambil data grafik
+                    fetchChartData(); 
+                }
+            )
+            // Dengarkan perubahan pada tabel-tabel yang memengaruhi data statistik
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'problem_reports' }, fetchStatsData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'chassis' }, fetchStatsData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'heads' }, fetchStatsData)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'storages' }, fetchStatsData)
+            .subscribe();
 
-    return () => {
-        supabase.removeChannel(channel);
-    };
-}, [supabase, fetchChartData, fetchStatsData]);
+        // 3. Cleanup: Hapus channel subscription saat komponen tidak lagi digunakan (misal: pindah halaman)
+        // Ini sangat penting untuk mencegah memory leak.
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [supabase, fetchChartData, fetchStatsData]);
+
+    // Sisa kode untuk UI (sudah benar, tidak perlu diubah)
     const stats = [
         { title: 'Total Casis', value: statsData.chassisCount, icon: Truck, href: '/casis' },
         { title: 'Total Head', value: statsData.headsCount, icon: Car, href: '/head' },
         { title: 'Total Storage', value: statsData.storagesCount, icon: Container, href: '/storage' },
-        { title: 'Perlu Perbaikan', value: statsData.urgentCount, icon: Wrench, href: '/perlu-perbaikan' }
     ];
 
     const chartLabels: Record<string, string[]> = {
@@ -288,7 +296,6 @@ const fetchChartData = useCallback(async () => {
                             </div>
                         </div>
                     </div>
-                    
                 </div>
             </div>
         </div>
