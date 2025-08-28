@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import AnimatedCounter from '@/components/ui/AnimatedCounter';
 import { createClient } from '@/utils/supabase/client';
-import { Truck, Car, Container, Wrench } from 'lucide-react';
+// 1. Impor ikon baru yang akan kita gunakan
+import { LayoutGrid, Wrench, History, Siren } from 'lucide-react';
 
 // Import untuk Grafik (Chart.js)
 import dynamic from 'next/dynamic';
@@ -39,30 +40,24 @@ export default function DashboardPage() {
     const { session, isLoading: isAuthLoading } = useAuth();
     const supabase = createClient();
 
-    // State untuk data statistik utama (kartu)
+    // 2. Ubah state untuk menyimpan data statistik yang baru
     const [statsData, setStatsData] = useState({ 
-        chassisCount: 0, 
-        headsCount: 0, 
-        storagesCount: 0, 
-        urgentCount: 0 
+        totalAset: 0,
+        perluPerbaikan: 0,
+        recordPerbaikan: 0,
+        urgentFix: 0
     });
     
-    // State untuk data ringkasan laporan
+    // State lainnya (tidak berubah)
     const [reportSummary, setReportSummary] = useState({ daily: 0, weekly: 0, monthly: 0, yearly: 0 });
-    
-    // State untuk data grafik
     const [chartDataSets, setChartDataSets] = useState<Record<string, number[]>>({ 
         daily: [], weekly: [], monthly: [], yearly: [] 
     });
     const [chartMode, setChartMode] = useState<string>('daily');
-    
-    // State untuk status loading
     const [isLoadingChart, setIsLoadingChart] = useState(true);
     const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-    // Fungsi untuk mengambil data statistik (kartu atas)
-    // useCallback digunakan agar fungsi ini tidak dibuat ulang setiap kali render,
-    // sehingga lebih efisien saat digunakan di dalam useEffect.
+    // 3. Modifikasi fungsi fetchStatsData untuk mengambil data baru
     const fetchStatsData = useCallback(async () => {
         setIsLoadingStats(true);
         try {
@@ -70,18 +65,34 @@ export default function DashboardPage() {
                 { count: chassisCount },
                 { count: headsCount },
                 { count: storagesCount },
-                { count: urgentCount }
+                { count: perluPerbaikanCount }, // Data 'Perlu Perbaikan'
+                { count: recordPerbaikanCount },// Data 'Record Perbaikan'
+                { count: urgentFixCount }      // Data 'Urgent Fix'
             ] = await Promise.all([
+                // Query untuk total aset
                 supabase.from('chassis').select('*', { count: 'exact', head: true }),
                 supabase.from('heads').select('*', { count: 'exact', head: true }),
                 supabase.from('storages').select('*', { count: 'exact', head: true }),
-                supabase.from('problem_reports').select('*', { count: 'exact', head: true }).in('status', ['Baru', 'Menunggu', 'Dikerjakan'])
+                
+                // PERUBAHAN DI SINI: Query untuk 'Perlu Perbaikan'
+                // Sekarang mengambil data dari view 'pending_repairs_view'.
+                supabase.from('pending_repairs_view').select('*', { count: 'exact', head: true }),
+                
+                // Query untuk total 'Record Perbaikan' (semua baris)
+                supabase.from('maintenance_records').select('*', { count: 'exact', head: true }),
+                
+                // Query untuk 'Urgent Fix'
+                // Menghitung SEMUA baris di problem_reports tanpa filter status.
+                supabase.from('problem_reports').select('*', { count: 'exact', head: true })
             ]);
+
+            const totalAset = (chassisCount ?? 0) + (headsCount ?? 0) + (storagesCount ?? 0);
+
             setStatsData({
-                chassisCount: chassisCount ?? 0,
-                headsCount: headsCount ?? 0,
-                storagesCount: storagesCount ?? 0,
-                urgentCount: urgentCount ?? 0,
+                totalAset: totalAset,
+                perluPerbaikan: perluPerbaikanCount ?? 0,
+                recordPerbaikan: recordPerbaikanCount ?? 0,
+                urgentFix: urgentFixCount ?? 0,
             });
         } catch (error) {
             console.error("Error fetching stats data:", error);
@@ -90,7 +101,7 @@ export default function DashboardPage() {
         }
     }, [supabase]);
 
-    // Fungsi untuk mengambil data grafik dan ringkasan laporan
+    // Fungsi fetchChartData (tidak berubah)
     const fetchChartData = useCallback(async () => {
         setIsLoadingChart(true);
         const { data: inspections, error } = await supabase
@@ -103,7 +114,6 @@ export default function DashboardPage() {
             return;
         }
 
-        // Logika kalkulasi data (sudah benar, tidak perlu diubah)
         const now = new Date();
         const startOfTodayLocal = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const startOfWeekLocal = new Date(startOfTodayLocal);
@@ -154,44 +164,35 @@ export default function DashboardPage() {
         setIsLoadingChart(false);
     }, [supabase]);
 
-    // useEffect inilah inti dari fitur real-time
     useEffect(() => {
-        // 1. Panggil fungsi fetch untuk mendapatkan data awal saat komponen dimuat
         fetchStatsData();
         fetchChartData();
 
-        // 2. Buat channel subscription untuk mendengarkan perubahan dari database
         const channel = supabase
             .channel('realtime-dashboard-all')
-            // Dengarkan perubahan (INSERT, UPDATE, DELETE) pada tabel 'inspections'
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, 
-                (payload) => {
-                    console.log('Perubahan pada tabel inspeksi, memuat ulang data grafik...', payload);
-                    // Jika ada perubahan, panggil ulang fungsi untuk mengambil data grafik
-                    fetchChartData(); 
-                }
-            )
-            // Dengarkan perubahan pada tabel-tabel yang memengaruhi data statistik
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'inspections' }, fetchChartData)
+            // Listener ini akan memicu fetchStatsData, yang kemudian akan query ke view
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_records' }, fetchStatsData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'problem_reports' }, fetchStatsData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'chassis' }, fetchStatsData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'heads' }, fetchStatsData)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'storages' }, fetchStatsData)
             .subscribe();
 
-        // 3. Cleanup: Hapus channel subscription saat komponen tidak lagi digunakan (misal: pindah halaman)
-        // Ini sangat penting untuk mencegah memory leak.
         return () => {
             supabase.removeChannel(channel);
         };
     }, [supabase, fetchChartData, fetchStatsData]);
 
-    // Sisa kode untuk UI (sudah benar, tidak perlu diubah)
+    // Definisikan kartu-kartu yang akan ditampilkan
     const stats = [
-        { title: 'Total Casis', value: statsData.chassisCount, icon: Truck, href: '/casis' },
-        { title: 'Total Head', value: statsData.headsCount, icon: Car, href: '/head' },
-        { title: 'Total Storage', value: statsData.storagesCount, icon: Container, href: '/storage' },
+        { title: 'Total Aset Aktif', value: statsData.totalAset, icon: LayoutGrid, href: '/aset-aktif' },
+        { title: 'Perlu Perbaikan', value: statsData.perluPerbaikan, icon: Wrench, href: '/perlu-perbaikan' },
+        { title: 'Record Perbaikan', value: statsData.recordPerbaikan, icon: History, href: '/maintenance' },
+        { title: 'Urgent Fix', value: statsData.urgentFix, icon: Siren, href: '/urgent' }
     ];
 
+    // Sisa kode UI (tidak berubah)
     const chartLabels: Record<string, string[]> = {
         daily: ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'],
         weekly: ['Minggu 1', 'Minggu 2', 'Minggu 3', 'Minggu 4'],

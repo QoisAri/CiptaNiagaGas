@@ -1,19 +1,28 @@
+// -----------------------------------------------------------------------------
+// FILE 2: Buat file baru bernama PendingRepairClient.tsx di dalam folder
+// app/perlu-perbaikan/ dan salin semua kode di bawah ini ke dalamnya.
+// -----------------------------------------------------------------------------
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { FaWrench, FaImage, FaDownload } from 'react-icons/fa';
+import Link from 'next/link';
 import Image from 'next/image';
-import { type PendingRepairItem } from './page';
+import { FaArrowLeft, FaArrowRight, FaWrench, FaImage, FaDownload } from 'react-icons/fa';
 import { generatePendingRepairReport } from './actions';
 import { saveAs } from 'file-saver';
+import { type PendingRepairItem } from './page'; // Impor tipe dari page.tsx
 
 export default function PendingRepairClient({ 
     initialData, 
-    currentFilter 
+    currentFilter,
+    currentPage,
+    totalPages
 }: { 
     initialData: PendingRepairItem[], 
-    currentFilter?: string 
+    currentFilter?: string,
+    currentPage: number,
+    totalPages: number
 }) {
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -29,6 +38,7 @@ export default function PendingRepairClient({
     } else {
       params.delete('tipeAset');
     }
+    params.set('page', '1'); // Reset ke halaman 1 saat filter diubah
     startTransition(() => {
       router.push(`${pathname}?${params.toString()}`);
     });
@@ -87,6 +97,26 @@ export default function PendingRepairClient({
             </select>
           </div>
         </div>
+        
+        {totalPages > 1 && (
+            <div className="mb-6 flex justify-center items-center gap-4">
+            <Link 
+                href={`/perlu-perbaikan?page=${currentPage - 1}&tipeAset=${currentFilter || 'all'}`}
+                className={`flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
+            >
+                <FaArrowLeft /> Sebelumnya
+            </Link>
+            <span className="text-gray-700 font-medium">
+                Halaman {currentPage} dari {totalPages}
+            </span>
+            <Link 
+                href={`/perlu-perbaikan?page=${currentPage + 1}&tipeAset=${currentFilter || 'all'}`}
+                className={`flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 ${currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
+            >
+                Selanjutnya <FaArrowRight />
+            </Link>
+            </div>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full table-auto border-collapse">
@@ -131,15 +161,15 @@ export default function PendingRepairClient({
       {modalImageUrl && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50" onClick={() => setModalImageUrl(null)}>
            <div className="relative p-4">
-              <button onClick={() => setModalImageUrl(null)} className="absolute -top-10 -right-4 text-white text-3xl font-bold">&times;</button>
-              <Image 
-                  src={modalImageUrl}
-                  alt="Foto Masalah"
-                  width={800}
-                  height={600}
-                  className="max-w-screen-lg max-h-screen-lg object-contain"
-              />
-          </div>
+             <button onClick={() => setModalImageUrl(null)} className="absolute -top-10 -right-4 text-white text-3xl font-bold">&times;</button>
+             <Image 
+                src={modalImageUrl}
+                alt="Foto Masalah"
+                width={800}
+                height={600}
+                className="max-w-screen-lg max-h-screen-lg object-contain"
+             />
+         </div>
         </div>
       )}
     </>

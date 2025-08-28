@@ -2,16 +2,21 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { FaImage, FaTrash } from 'react-icons/fa'; // Impor FaTrash
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { FaImage, FaTrash, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
 import { type ProblemReport } from './page'; 
-import { deleteProblemReport } from './action'; // Impor action baru
+import { deleteProblemReport } from './action';
 
 type Props = {
   reports: ProblemReport[];
+  currentPage: number;
+  totalPages: number;
 };
 
-export default function UrgentFixClient({ reports }: Props) {
+export default function UrgentFixClient({ reports, currentPage, totalPages }: Props) {
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+  const pathname = usePathname();
 
   const getStatusBadgeClass = (status: string) => {
     switch (status.toLowerCase()) {
@@ -22,6 +27,7 @@ export default function UrgentFixClient({ reports }: Props) {
         return 'bg-yellow-100 text-yellow-800';
       case 'menunggu':
       case 'baru':
+      case 'reported': // Tambahkan status 'reported'
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
@@ -35,6 +41,26 @@ export default function UrgentFixClient({ reports }: Props) {
 
   return (
     <>
+      {totalPages > 1 && (
+        <div className="mb-6 flex justify-center items-center gap-4">
+            <Link 
+                href={`${pathname}?page=${currentPage - 1}`}
+                className={`flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
+            >
+                <FaArrowLeft /> Sebelumnya
+            </Link>
+            <span className="text-gray-700 font-medium">
+                Halaman {currentPage} dari {totalPages}
+            </span>
+            <Link 
+                href={`${pathname}?page=${currentPage + 1}`}
+                className={`flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg shadow-sm hover:bg-gray-50 ${currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
+            >
+                Selanjutnya <FaArrowRight />
+            </Link>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="w-full table-auto border-collapse">
           <thead className="bg-gray-100">
@@ -48,7 +74,6 @@ export default function UrgentFixClient({ reports }: Props) {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Pelapor</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Deadline</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Status</th>
-              {/* ## 1. TAMBAHKAN HEADER KOLOM AKSI ## */}
               <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Aksi</th>
             </tr>
           </thead>
@@ -77,7 +102,6 @@ export default function UrgentFixClient({ reports }: Props) {
                       {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                     </span>
                   </td>
-                  {/* ## 2. TAMBAHKAN SEL UNTUK TOMBOL HAPUS ## */}
                   <td className="px-4 py-3 border-b text-gray-900 text-center">
                     <form
                       action={deleteProblemReport}
@@ -96,7 +120,6 @@ export default function UrgentFixClient({ reports }: Props) {
                 </tr>
               ))
             ) : (
-              // ## 3. PERBAIKI COLSPAN MENJADI 10 ##
               <tr><td colSpan={10} className="text-center py-10 text-gray-500">Tidak ada laporan perbaikan mendesak.</td></tr>
             )}
           </tbody>

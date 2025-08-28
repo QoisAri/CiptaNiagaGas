@@ -12,62 +12,89 @@ export type HistoryItem = {
   keterangan: string | null;
 };
 
-async function getWashingHistory(): Promise<HistoryItem[]> {
-  const supabase = createClient();
+const ITEMS_PER_PAGE = 50;
 
-  // Langkah 1: Ambil semua data mentah dari washing_history
-  const { data: historyData, error: historyError } = await supabase
-    .from('washing_history')
-    .select('*')
-    .order('washed_at', { ascending: false });
+// Fungsi getWashingHistory sekarang menerima parameter
+async function getWashingHistory({ 
+    currentPage,
+    tipeFeet
+}: {
+    currentPage: number;
+    tipeFeet?: string;
+}): Promise<{ data: HistoryItem[], totalCount: number }> {
+    const supabase = createClient();
 
-  if (historyError) {
-    console.error("Error fetching washing history:", historyError.message);
-    return [];
-  }
-  if (!historyData || historyData.length === 0) {
-    return [];
-  }
+    // Karena filter 'tipeFeet' ada di tabel relasi, kita ambil semua data dulu,
+    // lalu filter dan paginasi di server-side.
+    const { data: historyData, error: historyError } = await supabase
+        .from('washing_history')
+        .select(`
+            *,
+            storages ( id, storage_code, feet, type ),
+            profiles ( id, name )
+        `)
+        .order('washed_at', { ascending: false });
 
-  // Langkah 2: Kumpulkan semua ID yang dibutuhkan untuk relasi
-  const storageIds = [...new Set(historyData.map(h => h.storage_id).filter(Boolean))];
-  const profileIds = [...new Set(historyData.map(h => h.washed_by_id).filter(Boolean))];
-
-  // Langkah 3: Ambil data pendukung (storages dan profiles) dalam query terpisah
-  const { data: storages } = await supabase.from('storages').select('id, storage_code, feet, type').in('id', storageIds);
-  const { data: profiles } = await supabase.from('profiles').select('id, name').in('id', profileIds);
-
-  // Langkah 4: Buat Peta (Map) untuk pencocokan data yang cepat
-  const storagesMap = new Map((storages || []).map(s => [s.id, s]));
-  const profilesMap = new Map((profiles || []).map(p => [p.id, p.name]));
-
-  // Langkah 5: Gabungkan semua data secara manual. Ini jauh lebih aman.
-  const finalHistoryList = historyData.map(record => {
-    const asset = storagesMap.get(record.storage_id);
-    const washedBy = profilesMap.get(record.washed_by_id);
-
-    // Kita hanya akan menampilkan data jika asetnya ada.
-    if (!asset) {
-      return null;
+    if (historyError) {
+        console.error("Error fetching washing history:", historyError.message);
+        return { data: [], totalCount: 0 };
+    }
+    if (!historyData) {
+        return { data: [], totalCount: 0 };
     }
 
-    return {
-      id: record.id,
-      tanggal: new Date(record.washed_at).toLocaleDateString('id-ID'),
-      assetType: 'Storage', // Asumsi saat ini hanya storage
-      kodeAset: asset.storage_code,
-      tipeFeet: asset.feet ? String(asset.feet) : (asset.type || null),
-      diliputOleh: washedBy || 'N/A', // Jika pencuci tidak ada, tampilkan N/A
-      keterangan: record.notes,
-    };
-  }).filter((item): item is HistoryItem => item !== null);
+    // Gabungkan dan map data
+    const fullHistoryList = historyData.map(record => {
+        const asset = record.storages;
+        const washedBy = record.profiles;
 
-  return finalHistoryList;
+        if (!asset) return null;
+
+        return {
+            id: record.id,
+            tanggal: new Date(record.washed_at).toLocaleDateString('id-ID'),
+            assetType: 'Storage', // Asumsi saat ini hanya storage
+            kodeAset: asset.storage_code,
+            tipeFeet: asset.feet ? String(asset.feet) : (asset.type || null),
+            diliputOleh: washedBy?.name || 'N/A',
+            keterangan: record.notes,
+        };
+    }).filter((item): item is HistoryItem => item !== null);
+
+    // Terapkan filter di server
+    const filteredList = fullHistoryList.filter(item => {
+        if (!tipeFeet || tipeFeet === 'all') return true;
+        return item.tipeFeet === tipeFeet;
+    });
+
+    const totalCount = filteredList.length;
+
+    // Terapkan pagination (slice) pada data yang sudah difilter
+    const from = (currentPage - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE;
+    const paginatedData = filteredList.slice(from, to);
+
+    return { data: paginatedData, totalCount };
 }
 
-export default async function HistoryPage() {
-  const historyData = await getWashingHistory();
-  return (
-    <WashingListClient initialHistoryData={historyData} />
-  );
+export default async function HistoryPage({
+    searchParams
+}: {
+    searchParams: { page?: string; tipeFeet?: string; }
+}) {
+    const currentPage = Number(searchParams.page) || 1;
+    const { data: historyData, totalCount } = await getWashingHistory({
+        currentPage,
+        tipeFeet: searchParams.tipeFeet
+    });
+
+    const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+    return (
+        <WashingListClient 
+            initialHistoryData={historyData}
+            currentPage={currentPage}
+            totalPages={totalPages}
+        />
+    );
 }
