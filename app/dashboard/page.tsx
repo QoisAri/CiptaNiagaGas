@@ -186,7 +186,7 @@ export default function DashboardPage() {
 
     // Definisikan kartu-kartu yang akan ditampilkan
     const stats = [
-        { title: 'Total Aset Aktif', value: statsData.totalAset, icon: LayoutGrid, href: '/aset-aktif' },
+        { title: 'Total Aset Aktif', value: statsData.totalAset, icon: LayoutGrid, href: '/aset/head' },
         { title: 'Perlu Perbaikan', value: statsData.perluPerbaikan, icon: Wrench, href: '/perlu-perbaikan' },
         { title: 'Record Perbaikan', value: statsData.recordPerbaikan, icon: History, href: '/maintenance' },
         { title: 'Urgent Fix', value: statsData.urgentFix, icon: Siren, href: '/urgent' }
