@@ -12,6 +12,7 @@ export type ProblemReport = {
   status: string;
   deadline: string;
   problemPhotoUrl: string | null;
+  rawTanggalLapor: string; 
 };
 
 const ExclamationTriangleIcon = () => (
@@ -23,19 +24,20 @@ const ExclamationTriangleIcon = () => (
 const ITEMS_PER_PAGE = 50;
 
 async function getProblemReports({ 
-    currentPage 
+    currentPage,
+    dateRange
 }: { 
-    currentPage: number 
+    currentPage: number,
+    dateRange?: string;
 }): Promise<{ data: ProblemReport[], totalCount: number }> {
     const supabase = createClient();
-    const from = (currentPage - 1) * ITEMS_PER_PAGE;
-    const to = from + ITEMS_PER_PAGE - 1;
-
-    const { data: reports, error: reportsError, count } = await supabase
+    
+    let query = supabase
         .from('problem_reports')
-        .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
-        .range(from, to);
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    const { data: reports, error: reportsError } = await query;
 
     if (reportsError) {
         console.error('Error fetching problem reports:', reportsError.message);
@@ -45,13 +47,39 @@ async function getProblemReports({
         return { data: [], totalCount: 0 };
     }
 
-    // Logika join dan mapping data yang kompleks (tidak berubah)
+    // --- LOGIKA FILTER TANGGAL ---
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfWeek = new Date(startOfToday);
+    startOfWeek.setDate(startOfWeek.getDate() - startOfToday.getDay());
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+    const filteredReports = reports.filter(report => {
+        if (!dateRange || dateRange === 'all') return true;
+        
+        const itemDate = new Date(report.created_at);
+        switch(dateRange) {
+            case 'harian': return itemDate >= startOfToday;
+            case 'mingguan': return itemDate >= startOfWeek;
+            case 'bulanan': return itemDate >= startOfMonth;
+            case 'tahunan': return itemDate >= startOfYear;
+            default: return true;
+        }
+    });
+
+    const totalCount = filteredReports.length;
+    const from = (currentPage - 1) * ITEMS_PER_PAGE;
+    const to = from + ITEMS_PER_PAGE;
+    const paginatedReports = filteredReports.slice(from, to);
+
+    // Logika join dan mapping data yang kompleks
     const profileIds = new Set<string>();
     const itemIds = new Set<string>();
     const headIds = new Set<string>();
     const chassisIds = new Set<string>();
     const storageIds = new Set<string>();
-    reports.forEach(r => {
+    paginatedReports.forEach(r => {
         if (r.reported_by_id) profileIds.add(r.reported_by_id);
         if (r.item_id) itemIds.add(r.item_id);
         if (r.head_id) headIds.add(r.head_id);
@@ -71,7 +99,7 @@ async function getProblemReports({
     const chassisMap = new Map((chassis || []).map(c => [c.id, c.chassis_code]));
     const storagesMap = new Map((storages || []).map(s => [s.id, s.storage_code]));
 
-    const finalData = reports.map(report => {
+    const finalData = paginatedReports.map(report => {
         let assetType = 'Tidak Diketahui';
         let assetCode = 'N/A';
         if (report.head_id) {
@@ -87,10 +115,11 @@ async function getProblemReports({
         return {
             id: report.id,
             tanggalLapor: new Date(report.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }),
+            rawTanggalLapor: report.created_at,
             tipeAset: assetType,
             kodeAset: assetCode,
             deskripsiMasalah: report.problem_notes,
-            itemRusak: itemsMap.get(report.item_id) || 'N/A',
+            itemRusak: report.custom_title || itemsMap.get(report.item_id) || 'N/A',
             pelapor: profilesMap.get(report.reported_by_id) || 'Pengguna tidak dikenal',
             status: report.status,
             deadline: report.deadline_date ? new Date(report.deadline_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-',
@@ -98,16 +127,19 @@ async function getProblemReports({
         };
     });
     
-    return { data: finalData, totalCount: count ?? 0 };
+    return { data: finalData, totalCount };
 }
 
 export default async function UrgentFixPage({
     searchParams
 }: {
-    searchParams: { page?: string; }
+    searchParams: { page?: string; range?: string; }
 }) {
     const currentPage = Number(searchParams.page) || 1;
-    const { data: reports, totalCount } = await getProblemReports({ currentPage });
+    const { data: reports, totalCount } = await getProblemReports({ 
+        currentPage,
+        dateRange: searchParams.range
+    });
     const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
     return (
