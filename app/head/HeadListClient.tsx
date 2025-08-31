@@ -1,136 +1,174 @@
 // app/head/HeadListClient.tsx
+
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link'; // Import Link dari Next.js
+import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { deleteHeadInspectionsByIds, deleteHeadInspectionsByDateRange } from './actions';
 
-interface InspectionSummary {
-  id: string; // inspection_id
-  head_code: string;
-  tanggal_inspeksi: string;
-  pemeriksa: string;
-  tipe_feet: number;
-}
+// Tipe data untuk properti komponen ini
+type InspectionRow = {
+  id: string; // ID Inspeksi
+  head_code: string | null;
+  tanggal: string;
+  pemeriksa: string | null;
+  hasError: boolean;
+};
 
-interface HeadListClientProps {
-  initialData: InspectionSummary[];
-  selectedTypeFeet?: string;
-}
+type Props = {
+  inspections: InspectionRow[];
+  startIndex: number;
+};
 
-const HeadListClient: React.FC<HeadListClientProps> = ({ initialData, selectedTypeFeet }) => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [currentSelectedType, setCurrentSelectedType] = useState(selectedTypeFeet || 'Semua');
-  const [displayedData, setDisplayedData] = useState<InspectionSummary[]>(initialData);
+export default function HeadListClient({ inspections, startIndex }: Props) {
+  // State untuk fitur hapus massal
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isPending, startTransition] = useTransition();
 
-  const typeFeetOptions = ['Semua', '10', '20', '40']; // Opsinya di sini
+  // Handler untuk fitur hapus massal
+  const handleSelectRow = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
+    );
+  };
 
-  useEffect(() => {
-    setDisplayedData(initialData);
-    setCurrentSelectedType(selectedTypeFeet || 'Semua');
-  }, [initialData, selectedTypeFeet]);
-
-  const handleTypeChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    const newType = event.target.value;
-    setCurrentSelectedType(newType);
-
-    const params = new URLSearchParams(searchParams.toString());
-    if (newType && newType !== 'Semua') {
-      params.set('type', newType);
+  const handleSelectAll = () => {
+    if (selectedIds.length === inspections.length) {
+      setSelectedIds([]);
     } else {
-      params.delete('type'); // Hapus parameter 'type' jika memilih 'Semua'
+      setSelectedIds(inspections.map((item) => item.id));
     }
-    router.push(`?${params.toString()}`);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) {
+      alert('Pilih setidaknya satu data untuk dihapus.');
+      return;
+    }
+    if (window.confirm(`Yakin ingin menghapus ${selectedIds.length} data inspeksi terpilih?`)) {
+      startTransition(async () => {
+        await deleteHeadInspectionsByIds(selectedIds);
+        setSelectedIds([]);
+        setIsDeleteMode(false);
+      });
+    }
+  };
+
+  const handleDeleteByDateRange = () => {
+    if (!startDate || !endDate) {
+      alert('Silakan pilih tanggal mulai dan tanggal selesai.');
+      return;
+    }
+    if (window.confirm(`Yakin ingin menghapus semua data dari ${startDate} sampai ${endDate}?`)) {
+      startTransition(async () => {
+        await deleteHeadInspectionsByDateRange(startDate, endDate);
+        setStartDate('');
+        setEndDate('');
+        setIsDeleteMode(false);
+      });
+    }
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold mb-1">Daftar Seluruh Head</h1>
-          <p className="text-gray-600">Menampilkan tipe feet: {currentSelectedType}</p>
-        </div>
-        <div className="flex space-x-4">
-          <select
-            id="tipe-feet-select"
-            value={currentSelectedType}
-            onChange={handleTypeChange}
-            className="border border-gray-300 p-2 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-          >
-            {typeFeetOptions.map((type) => (
-              <option key={type} value={type}>
-                {type}
-              </option>
-            ))}
-          </select>
-          <button className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
-            + Tambah Data
-          </button>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
-            Unduh Rekapan
-          </button>
+    <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      {/* Header untuk tombol aksi hapus */}
+      <div className="p-4 border-b min-h-[80px] flex justify-end items-center flex-wrap gap-4">
+        <div className="flex flex-col items-end gap-2">
+          {!isDeleteMode ? (
+            <button
+              onClick={() => setIsDeleteMode(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-semibold shadow-sm"
+            >
+              Hapus Data Inspeksi
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteSelected}
+                disabled={isPending || selectedIds.length === 0}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-400 font-semibold shadow-sm"
+              >
+                {isPending ? 'Menghapus...' : `Hapus (${selectedIds.length}) Terpilih`}
+              </button>
+              <button
+                onClick={() => { setIsDeleteMode(false); setSelectedIds([]); }}
+                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 font-semibold shadow-sm"
+              >
+                Batal
+              </button>
+            </div>
+          )}
+          {isDeleteMode && (
+            <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50 mt-2 shadow-sm">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border p-1 rounded text-sm"/>
+              <span className="text-gray-600">s/d</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border p-1 rounded text-sm"/>
+              <button
+                onClick={handleDeleteByDateRange}
+                disabled={isPending || !startDate || !endDate}
+                className="bg-orange-500 text-white px-3 py-1 rounded-md text-sm hover:bg-orange-600 disabled:bg-gray-400 font-semibold"
+              >
+                Hapus Rentang
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        {displayedData.length > 0 ? (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  No
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Head Code
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tanggal
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Pemeriksa
-                </th>
-                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Aksi
-                </th>
+      {/* Tabel Data */}
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-100">
+          <tr>
+            {isDeleteMode && (
+              <th className="px-4 py-3 text-center w-12">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300"
+                  checked={inspections.length > 0 && selectedIds.length === inspections.length}
+                  onChange={handleSelectAll}
+                />
+              </th>
+            )}
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Head Code</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemeriksa</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {inspections && inspections.length > 0 ? (
+            inspections.map((item, index) => (
+              <tr key={item.id} className={`${item.hasError ? 'bg-red-100' : ''} ${selectedIds.includes(item.id) ? 'bg-blue-100' : 'hover:bg-gray-50'}`}>
+                {isDeleteMode && (
+                  <td className="px-4 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={() => handleSelectRow(item.id)}
+                    />
+                  </td>
+                )}
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{startIndex + index + 1}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">{item.head_code}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.pemeriksa}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <Link href={`/head/${item.id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 px-3 py-1 rounded-md">
+                    Lihat Detail
+                  </Link>
+                </td>
               </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {displayedData.map((inspection, index) => (
-                <tr key={inspection.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {index + 1}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {inspection.head_code}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(inspection.tanggal_inspeksi).toLocaleDateString('id-ID', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                    })}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {inspection.pemeriksa}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link href={`/head/${inspection.id}`} className="text-indigo-600 hover:text-indigo-900">
-                      Lihat Detail
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        ) : (
-          <div className="p-6 text-center text-gray-500">
-            Tidak ada data inspeksi untuk kriteria yang dipilih.
-          </div>
-        )}
-      </div>
+            ))
+          ) : (
+            <tr><td colSpan={isDeleteMode ? 6 : 5} className="text-center py-10 text-gray-500">Tidak ada data inspeksi yang cocok.</td></tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
-};
-
-export default HeadListClient;
+}

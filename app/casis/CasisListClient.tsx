@@ -1,91 +1,173 @@
+// app/casis/CasisListClient.tsx
+
 'use client';
 
-import React from 'react';
-import { useFormStatus } from 'react-dom';
-import { deleteInspection } from '@/app/casis/actions';
+import Link from 'next/link';
+import { useState, useTransition } from 'react';
+import { deleteInspectionsByIds, deleteInspectionsByDateRange } from './actions';
 
-// PERBAIKAN: Membuat tipe data yang lebih spesifik
-type Row = { id: string; name: string; kondisi: string; keterangan: string | null; };
-type SubGroup = { parentName: string; rows: Row[] };
-type Group = Record<string, SubGroup[]>;
-
-// PERBAIKAN: Tipe spesifik untuk inspectionHeader, menggantikan 'any'
-type InspectionHeader = {
+// Tipe data untuk properti komponen ini
+type InspectionRow = {
   id: string;
+  chassis_code: string | null;
   tanggal: string;
-  catatan: string | null;
-  profiles: { name: string } | null;
-  chassis: { chassis_code: string } | null;
+  pemeriksa: string | null;
+  hasError: boolean;
 };
 
-type Props = { 
-  inspectionHeader: InspectionHeader; 
-  groups: Group; 
+type Props = {
+  inspections: InspectionRow[];
+  startIndex: number;
 };
 
-function DeleteInspectionButton({ inspectionId }: { inspectionId: string }) {
-    const { pending } = useFormStatus();
-    const handleDelete = (event: React.FormEvent<HTMLFormElement>) => {
-        if (!confirm('Anda yakin ingin menghapus seluruh data inspeksi ini?')) {
-            event.preventDefault();
-        }
-    }
-    return (
-        <form action={deleteInspection} onSubmit={handleDelete}>
-            <input type="hidden" name="inspectionId" value={inspectionId} />
-            <button type="submit" disabled={pending} className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm">
-                {pending ? 'Menghapus...' : 'Hapus Inspeksi'}
-            </button>
-        </form>
+export default function CasisListClient({ inspections, startIndex }: Props) {
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  const handleSelectRow = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((rowId) => rowId !== id) : [...prev, id]
     );
-}
+  };
 
-export const CasisDetailClient = ({ inspectionHeader, groups }: Props) => {
+  const handleSelectAll = () => {
+    if (selectedIds.length === inspections.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(inspections.map((item) => item.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedIds.length === 0) {
+      alert('Pilih setidaknya satu data untuk dihapus.');
+      return;
+    }
+    if (window.confirm(`Yakin ingin menghapus ${selectedIds.length} data terpilih?`)) {
+      startTransition(async () => {
+        await deleteInspectionsByIds(selectedIds);
+        setSelectedIds([]);
+        setIsDeleteMode(false);
+      });
+    }
+  };
+
+  const handleDeleteByDateRange = () => {
+    if (!startDate || !endDate) {
+      alert('Silakan pilih tanggal mulai dan tanggal selesai.');
+      return;
+    }
+    if (window.confirm(`Yakin ingin menghapus semua data dari ${startDate} sampai ${endDate}?`)) {
+      startTransition(async () => {
+        await deleteInspectionsByDateRange(startDate, endDate);
+        setStartDate('');
+        setEndDate('');
+        setIsDeleteMode(false);
+      });
+    }
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="bg-white shadow rounded p-4">
-        <div className="flex justify-between items-start">
-            <div>
-                <h2 className="text-xl font-semibold mb-2 text-black">Informasi Pemeriksaan</h2>
-                <p className="text-black"><strong>Nama Pemeriksa:</strong> {inspectionHeader.profiles?.name || 'N/A'}</p>
-                <p className="text-black"><strong>Nomor Casis:</strong> {inspectionHeader.chassis?.chassis_code || 'N/A'}</p>
-                <p className="text-black"><strong>Tanggal:</strong> {new Date(inspectionHeader.tanggal).toLocaleDateString('id-ID')}</p>
-                <p className="text-black"><strong>Catatan:</strong> {inspectionHeader.catatan || '-'}</p>
+    <div className="bg-white shadow-md rounded-lg overflow-hidden">
+      {/* Tombol Aksi Hapus */}
+      <div className="p-4 border-b flex justify-end items-center flex-wrap gap-4">
+        <div className="flex flex-col items-end gap-2">
+          {!isDeleteMode ? (
+            <button
+              onClick={() => setIsDeleteMode(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-semibold shadow-sm"
+            >
+              Hapus Data
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDeleteSelected}
+                disabled={isPending || selectedIds.length === 0}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:bg-gray-400 font-semibold shadow-sm"
+              >
+                {isPending ? 'Menghapus...' : `Hapus (${selectedIds.length}) Terpilih`}
+              </button>
+              <button
+                onClick={() => { setIsDeleteMode(false); setSelectedIds([]); }}
+                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 font-semibold shadow-sm"
+              >
+                Batal
+              </button>
             </div>
-            <div>
-                <DeleteInspectionButton inspectionId={inspectionHeader.id} />
+          )}
+
+          {isDeleteMode && (
+            <div className="flex items-center gap-2 p-2 border rounded-md bg-gray-50 mt-2 shadow-sm">
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="border p-1 rounded text-sm"/>
+              <span className="text-gray-600">s/d</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="border p-1 rounded text-sm"/>
+              <button
+                onClick={handleDeleteByDateRange}
+                disabled={isPending || !startDate || !endDate}
+                className="bg-orange-500 text-white px-3 py-1 rounded-md text-sm hover:bg-orange-600 disabled:bg-gray-400 font-semibold"
+              >
+                Hapus Rentang
+              </button>
             </div>
+          )}
         </div>
       </div>
 
-      {Object.entries(groups).map(([pageTitle, subGroups]) => (
-        <div key={pageTitle} className="bg-white shadow rounded p-4">
-          <h3 className="text-lg font-bold mb-3 text-black">{pageTitle}</h3>
-          <div className="overflow-x-auto">
-            <table className="table-auto w-full border border-collapse border-black">
-              <thead className="bg-gray-200">
-                <tr>
-                  <th className="border border-black px-4 py-2 text-left font-bold text-black w-1/3">Item</th>
-                  <th className="border border-black px-4 py-2 text-left font-bold text-black">Kondisi</th>
-                  <th className="border border-black px-4 py-2 text-left font-bold text-black">Keterangan</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subGroups.map((subGroup) => (
-                  <React.Fragment key={subGroup.parentName}>
-                    {subGroup.rows.length > 1 && subGroup.parentName !== subGroup.rows[0].name && (
-                        <tr><td colSpan={3} className="bg-gray-100 font-semibold p-2 border border-black">{subGroup.parentName}</td></tr>
-                    )}
-                    {subGroup.rows.map((row) => (
-                      <tr key={row.id}><td className="border border-black px-4 py-2 text-black">{row.name}</td><td className="border border-black px-4 py-2 text-black">{row.kondisi}</td><td className="border border-black px-4 py-2 text-black">{row.keterangan}</td></tr>
-                    ))}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ))}
+      {/* Tabel Data */}
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-100">
+          <tr>
+            {isDeleteMode && (
+              <th className="px-4 py-3 text-center w-12">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-gray-300"
+                  checked={inspections.length > 0 && selectedIds.length === inspections.length}
+                  onChange={handleSelectAll}
+                />
+              </th>
+            )}
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">NO</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Chassis Code</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Tanggal</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Pemeriksa</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {inspections && inspections.length > 0 ? (
+            inspections.map((item, index) => (
+              <tr key={item.id} className={`${item.hasError ? 'bg-red-100' : ''} ${selectedIds.includes(item.id) ? 'bg-blue-100' : 'hover:bg-gray-50'}`}>
+                {isDeleteMode && (
+                  <td className="px-4 py-4 text-center">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={selectedIds.includes(item.id)}
+                      onChange={() => handleSelectRow(item.id)}
+                    />
+                  </td>
+                )}
+                <td className="px-6 py-4 text-sm font-medium text-gray-900">{startIndex + index + 1}</td>
+                <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.chassis_code}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
+                <td className="px-6 py-4 text-sm text-gray-500">{item.pemeriksa}</td>
+                <td className="px-6 py-4 text-sm font-medium">
+                  <Link href={`/casis/${item.id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 px-3 py-1 rounded-md">
+                    Lihat Detail
+                  </Link>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr><td colSpan={isDeleteMode ? 6 : 5} className="text-center py-10 text-gray-500">Tidak ada data inspeksi yang cocok.</td></tr>
+          )}
+        </tbody>
+      </table>
     </div>
   );
-};
+}

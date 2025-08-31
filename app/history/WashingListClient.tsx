@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { FaFileExcel, FaShower, FaTrash, FaArrowLeft, FaArrowRight } from 'react-icons/fa';
-import { type HistoryItem } from './page';
+import { type HistoryItem } from './action'; // Impor tipe dari actions
 import { deleteWashingHistory } from './action'; 
 import * as XLSX from 'xlsx';
 

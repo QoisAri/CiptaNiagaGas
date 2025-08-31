@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
-import { FaArrowLeft, FaArrowRight } from 'react-icons/fa'; // Impor ikon panah
+import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
+import HeadListClient from './HeadListClient'; // <-- IMPORT KOMPONEN CLIENT BARU
 
 // Komponen FilterForm (tidak ada perubahan)
 function FilterForm({ feet, head_code, pemeriksa }: { feet?: string; head_code?: string; pemeriksa?: string; }) {
@@ -43,25 +44,25 @@ const ITEMS_PER_PAGE = 50;
 export default async function HeadListPage({ 
     searchParams 
 }: { 
-    searchParams: { 
+    searchParams?: { 
         feet?: string; 
         head_code?: string; 
         pemeriksa?: string;
-        page?: string; // Tambahkan parameter halaman
+        page?: string;
     }; 
 }) {
     const supabase = createClient();
-    const feet = searchParams.feet;
-    const headCode = searchParams.head_code;
-    const pemeriksa = searchParams.pemeriksa;
-    const currentPage = Number(searchParams.page) || 1;
+    const feet = searchParams?.feet;
+    const headCode = searchParams?.head_code;
+    const pemeriksa = searchParams?.pemeriksa;
+    const currentPage = Number(searchParams?.page) || 1;
 
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
     const to = from + ITEMS_PER_PAGE - 1;
 
     let query = supabase
         .from('inspections')
-        .select('id, tanggal, heads!inspections_head_id_fkey!inner(head_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)', { count: 'exact' }) // Tambahkan count
+        .select('id, tanggal, heads!inspections_head_id_fkey!inner(head_code, feet), profiles!fk_inspector!inner(name), inspection_results(kondisi)', { count: 'exact' })
         .not('head_id', 'is', null)
         .order('tanggal', { ascending: false });
 
@@ -69,7 +70,6 @@ export default async function HeadListPage({
     if (headCode) query = query.ilike('heads.head_code', `%${headCode}%`);
     if (pemeriksa) query = query.ilike('profiles.name', `%${pemeriksa}%`);
 
-    // Terapkan pagination
     query = query.range(from, to);
 
     const { data, error, count } = await query;
@@ -82,7 +82,15 @@ export default async function HeadListPage({
         return <div className="p-6 text-red-500">Error loading data: {error.message}</div>;
     }
 
-    // Buat URL parameter untuk pagination agar filter tetap ada
+    // Format data untuk dikirim ke Client Component
+    const formattedInspections = inspections.map(item => ({
+      id: item.id,
+      head_code: item.heads?.head_code ?? null,
+      tanggal: item.tanggal,
+      pemeriksa: item.profiles?.name ?? null,
+      hasError: item.inspection_results.some((result) => result.kondisi === 'tidak_baik'),
+    }));
+
     const params = new URLSearchParams();
     if (feet) params.set('feet', feet);
     if (headCode) params.set('head_code', headCode);
@@ -93,6 +101,7 @@ export default async function HeadListPage({
         <div className="p-6 bg-gray-50 min-h-screen">
             <div className="flex justify-between items-center mb-4">
                 <h1 className="text-3xl font-bold text-gray-800">Daftar Seluruh Head</h1>
+                {/* Anda bisa menambahkan tombol lain di sini jika perlu */}
             </div>
             <FilterForm feet={feet} head_code={headCode} pemeriksa={pemeriksa} />
 
@@ -115,40 +124,9 @@ export default async function HeadListPage({
                     </Link>
                 </div>
             )}
-
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Head Code</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tanggal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pemeriksa</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {inspections && inspections.length > 0 ? (
-                            inspections.map((item, index) => {
-                                const hasError = item.inspection_results.some((result: InspectionResult) => result.kondisi === 'tidak_baik');
-                                return (
-                                    <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{from + index + 1}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800">{item.heads?.head_code}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{item.profiles?.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <Link href={`/head/${item.id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 px-3 py-1 rounded-md">Lihat Detail</Link>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        ) : (
-                            <tr><td colSpan={5} className="text-center py-10 text-gray-500">Tidak ada data inspeksi yang cocok.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            
+            {/* Menggunakan Client Component untuk menampilkan tabel dan tombol-tombolnya */}
+            <HeadListClient inspections={formattedInspections} startIndex={from} />
         </div>
     );
 }

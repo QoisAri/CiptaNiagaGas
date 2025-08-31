@@ -1,3 +1,5 @@
+// app/head/actions.ts
+
 'use server';
 
 import { createClient } from '@/utils/supabase/server';
@@ -18,6 +20,45 @@ import {
 } from 'docx';
 
 export type FormState = { message: string; success: boolean; error?: boolean };
+
+// --- FUNGSI BARU UNTUK HAPUS INSPEKSI HEAD BERDASARKAN ID ---
+export async function deleteHeadInspectionsByIds(ids: string[]) {
+  if (!ids || ids.length === 0) {
+    return { success: false, message: 'Tidak ada ID yang dipilih.' };
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .in('id', ids);
+
+  if (error) {
+    console.error('Error deleting head inspections by IDs:', error);
+    return { success: false, message: error.message };
+  }
+  revalidatePath('/head'); // Revalidasi halaman head
+  return { success: true, message: 'Data terpilih berhasil dihapus.' };
+}
+
+// --- FUNGSI BARU UNTUK HAPUS INSPEKSI HEAD BERDASARKAN TANGGAL ---
+export async function deleteHeadInspectionsByDateRange(startDate: string, endDate: string) {
+  if (!startDate || !endDate) {
+    return { success: false, message: 'Tanggal mulai dan selesai harus diisi.' };
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .gte('tanggal', startDate)
+    .lte('tanggal', endDate);
+
+  if (error) {
+    console.error('Error deleting head inspections by date range:', error);
+    return { success: false, message: error.message };
+  }
+  revalidatePath('/head'); // Revalidasi halaman head
+  return { success: true, message: 'Data dalam rentang tanggal berhasil dihapus.' };
+}
 
 export async function upsertInspectionResult(
   prevState: FormState,

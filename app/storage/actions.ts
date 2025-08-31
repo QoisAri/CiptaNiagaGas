@@ -202,6 +202,46 @@ export async function addStorage(
 // FUNGSI UNTUK MANAJEMEN INSPEKSI
 // =================================================================
 
+// --- FUNGSI BARU UNTUK HAPUS INSPEKSI STORAGE BERDASARKAN ID ---
+export async function deleteStorageInspectionsByIds(ids: string[]) {
+  if (!ids || ids.length === 0) {
+    return { success: false, message: 'Tidak ada ID yang dipilih.' };
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .in('id', ids);
+
+  if (error) {
+    console.error('Error deleting storage inspections by IDs:', error);
+    return { success: false, message: error.message };
+  }
+  revalidatePath('/storage'); // Revalidasi halaman storage
+  return { success: true, message: 'Data terpilih berhasil dihapus.' };
+}
+
+// --- FUNGSI BARU UNTUK HAPUS INSPEKSI STORAGE BERDASARKAN TANGGAL ---
+export async function deleteStorageInspectionsByDateRange(startDate: string, endDate: string) {
+  if (!startDate || !endDate) {
+    return { success: false, message: 'Tanggal mulai dan selesai harus diisi.' };
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .gte('tanggal', startDate)
+    .lte('tanggal', endDate);
+
+  if (error) {
+    console.error('Error deleting storage inspections by date range:', error);
+    return { success: false, message: error.message };
+  }
+  revalidatePath('/storage'); // Revalidasi halaman storage
+  return { success: true, message: 'Data dalam rentang tanggal berhasil dihapus.' };
+}
+
+
 export async function deleteInspection(formData: FormData) {
   const inspectionId = formData.get('inspectionId') as string;
   const redirectTo = formData.get('redirectTo') as string;
@@ -278,11 +318,8 @@ export async function generateStorageReport(
 ) {
   const supabase = createClient();
   let reportData: StorageData[] = [];
-  // ✅ FIX 1: Ubah `let` menjadi `const`
   const fileName = `laporan-storage-${reportType}-${new Date().toISOString().split('T')[0]}.xlsx`;
 
-  // Ambil semua data master yang dibutuhkan dengan TIPE yang benar
-  // ✅ FIX 2: Memberi tahu Supabase tipe data yang diharapkan, menghilangkan kebutuhan `any`
   const { data: allStorages } = await supabase.from('storages').select('*');
   const { data: allInspections } = await supabase
     .from('inspections')
@@ -312,7 +349,6 @@ export async function generateStorageReport(
         feet: storage.feet,
         kondisi: inspection ? 'Sudah Dicek' : 'Belum Dicek',
         tanggal: inspection?.tanggal || null,
-        // ✅ FIX 2: `any` tidak lagi diperlukan karena tipe sudah benar
         pemeriksa: inspection?.profiles?.name || null,
         keterangan: null,
         item_name: null,
@@ -339,10 +375,8 @@ export async function generateStorageReport(
             feet: storage.feet,
             kondisi: result.kondisi,
             keterangan: result.keterangan,
-            // ✅ FIX 2: `any` tidak lagi diperlukan
             item_name: result.inspection_items?.name || 'Item tidak diketahui',
             tanggal: inspection.tanggal,
-            // ✅ FIX 2: `any` tidak lagi diperlukan
             pemeriksa: inspection?.profiles?.name || null,
             tgl_perbaikan: null,
             tindakan: null,
@@ -377,7 +411,6 @@ export async function generateStorageReport(
               tindakan: maintenance.notes,
               item_name: item?.name || 'Item tidak diketahui',
               tanggal: inspection.tanggal,
-              // ✅ FIX 2: `any` tidak lagi diperlukan
               pemeriksa: inspection?.profiles?.name || null,
               kondisi: null,
               keterangan: null,
@@ -413,7 +446,6 @@ export async function generateStorageReport(
     { header: 'Tanggal Inspeksi', key: 'tanggal', width: 20 },
   ];
 
-  // ✅ FIX 1: Ubah `let` menjadi `const`
   const headersConfig = [...baseHeaders];
   if (reportType === 'checked') {
     headersConfig.push({
@@ -469,9 +501,9 @@ export async function generateStorageReport(
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
-  // ✅ FIX 3: Kembalikan juga `fileName` agar bisa digunakan di komponen client
   return { file: Buffer.from(buffer).toString('base64'), fileName: fileName };
 }
+
 export async function generateStorageWordDoc(inspectionId: string) {
   const supabase = createClient();
   const { data: inspection } = await supabase.from('inspections').select(`*`).eq('id', inspectionId).single();

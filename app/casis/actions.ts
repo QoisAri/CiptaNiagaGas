@@ -73,11 +73,47 @@ export async function addCasis(prevState: FormState, formData: FormData): Promis
   return { message: 'Casis baru berhasil ditambahkan!', success: true };
 }
 
+// --- FUNGSI BARU UNTUK HAPUS BERDASARKAN PILIHAN CHECKBOX ---
+export async function deleteInspectionsByIds(ids: string[]) {
+  if (!ids || ids.length === 0) {
+    return { success: false, message: 'Tidak ada ID yang dipilih.' };
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .in('id', ids);
+
+  if (error) {
+    console.error('Error deleting inspections by IDs:', error);
+    return { success: false, message: error.message };
+  }
+  revalidatePath('/casis');
+  return { success: true, message: 'Data terpilih berhasil dihapus.' };
+}
+
+// --- FUNGSI BARU UNTUK HAPUS BERDASARKAN RENTANG TANGGAL ---
+export async function deleteInspectionsByDateRange(startDate: string, endDate: string) {
+  if (!startDate || !endDate) {
+    return { success: false, message: 'Tanggal mulai dan selesai harus diisi.' };
+  }
+  const supabase = createClient();
+  const { error } = await supabase
+    .from('inspections')
+    .delete()
+    .gte('tanggal', startDate)
+    .lte('tanggal', endDate);
+
+  if (error) {
+    console.error('Error deleting inspections by date range:', error);
+    return { success: false, message: error.message };
+  }
+  revalidatePath('/casis');
+  return { success: true, message: 'Data dalam rentang tanggal berhasil dihapus.' };
+}
+
+
 // Fungsi untuk membuat dokumen Word
-
-// Pastikan impor `createClient` dari Supabase sudah ada di file Anda.
-// import { createClient } from '@/utils/supabase/server';
-
 export async function generateCasisWordDoc(inspectionId: string) {
   const supabase = createClient();
   const { data: inspection } = await supabase.from('inspections').select(`*`).eq('id', inspectionId).single();

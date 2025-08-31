@@ -1,6 +1,9 @@
+// app/casis/page.tsx
+
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
 import { FaArrowLeft, FaArrowRight } from 'react-icons/fa';
+import CasisListClient from './CasisListClient'; // <-- IMPORT KOMPONEN CLIENT BARU
 
 // Komponen untuk Form Filter (tidak ada perubahan)
 function FilterForm({ feet, chassis_code, pemeriksa }: { feet?: string; chassis_code?: string; pemeriksa?: string; }) {
@@ -79,7 +82,6 @@ export default async function CasisListPage({
         query = query.ilike('profiles.name', `%${pemeriksa}%`);
     }
 
-    // Terapkan pagination
     query = query.range(from, to);
 
     const { data, error, count } = await query;
@@ -94,7 +96,15 @@ export default async function CasisListPage({
         return <div className="p-6 text-red-500">Terjadi kesalahan saat memuat data. Silakan coba lagi nanti.</div>;
     }
 
-    // Buat URL parameter untuk pagination agar filter tetap ada
+    // -- FIX: Mengubah 'undefined' menjadi 'null' menggunakan operator '??' --
+    const formattedInspections = inspections.map(item => ({
+      id: item.id,
+      chassis_code: item.chassis?.chassis_code ?? null,
+      tanggal: item.tanggal,
+      pemeriksa: item.profiles?.name ?? null,
+      hasError: item.inspection_results.some((result) => result.kondisi === 'tidak_baik'),
+    }));
+
     const params = new URLSearchParams();
     if (feet) params.set('feet', feet);
     if (chassisCode) params.set('chassis_code', chassisCode);
@@ -128,42 +138,8 @@ export default async function CasisListPage({
                     </Link>
                 </div>
             )}
-
-            <div className="bg-white shadow-md rounded-lg overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">NO</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Chassis Code</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Tanggal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Pemeriksa</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500">Aksi</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {inspections && inspections.length > 0 ? (
-                            inspections.map((item, index) => {
-                                const hasError = item.inspection_results.some((result) => result.kondisi === 'tidak_baik');
-                                return (
-                                    <tr key={item.id} className={hasError ? 'bg-red-100' : 'hover:bg-gray-50'}>
-                                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{from + index + 1}</td>
-                                        <td className="px-6 py-4 text-sm font-semibold text-gray-800">{item.chassis?.chassis_code}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">{new Date(item.tanggal).toLocaleDateString('id-ID')}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">{item.profiles?.name}</td>
-                                        <td className="px-6 py-4 text-sm font-medium">
-                                            <Link href={`/casis/${item.id}`} className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 px-3 py-1 rounded-md">
-                                                Lihat Detail
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        ) : (
-                            <tr><td colSpan={5} className="text-center py-10 text-gray-500">Tidak ada data inspeksi yang cocok.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            
+            <CasisListClient inspections={formattedInspections} startIndex={from} />
         </div>
     );
 }
