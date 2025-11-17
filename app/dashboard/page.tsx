@@ -164,7 +164,21 @@ export default function DashboardPage() {
         setIsLoadingChart(false);
     }, [supabase]);
 
+    
+    // ==========================================================
+    // --- PERUBAHAN UTAMA ADA DI 'useEffect' INI ---
+    // ==========================================================
     useEffect(() => {
+        // 1. GUARD CLAUSE:
+        // Jangan jalankan apapun jika autentikasi masih loading
+        // atau jika tidak ada session (login tidak valid).
+        if (isAuthLoading || !session) {
+            return; // Berhenti di sini, tunggu auth selesai
+        }
+
+        // 2. Auth Siap:
+        // Jika kode sampai di sini, itu berarti isAuthLoading = false
+        // dan session = ADA. Aman untuk mengambil data.
         fetchStatsData();
         fetchChartData();
 
@@ -182,7 +196,10 @@ export default function DashboardPage() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [supabase, fetchChartData, fetchStatsData]);
+        
+    // 3. TAMBAHKAN 'isAuthLoading' DAN 'session' KE DEPENDENSI:
+    // 'useEffect' ini akan berjalan ulang ketika isAuthLoading berubah dari true -> false.
+    }, [supabase, fetchChartData, fetchStatsData, isAuthLoading, session]);
 
     // Definisikan kartu-kartu yang akan ditampilkan
     const stats = [
@@ -221,6 +238,9 @@ export default function DashboardPage() {
         scales: { x: { grid: { display: false } }, y: { grid: { color: '#e5e7eb' } } }
     };
     
+    // Bagian 'if (isAuthLoading || !session)' ini sudah benar.
+    // Ini akan menampilkan spinner "Memuat Data..." sampai
+    // useAuth() selesai.
     if (isAuthLoading || !session) {
         return (
             <div className="flex justify-center items-center h-screen bg-gray-50">
@@ -267,7 +287,7 @@ export default function DashboardPage() {
                     <div className="h-80 relative">
                         {isLoadingChart ? (
                            <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-50 z-10">
-                             <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-blue-600"></div>
+                               <div className="w-8 h-8 border-2 border-dashed rounded-full animate-spin border-blue-600"></div>
                            </div>
                         ) : (
                             <Line options={chartOptions as any} data={chartData} />
@@ -291,7 +311,7 @@ export default function DashboardPage() {
                                 <span className="text-gray-500">Laporan Bulan Ini</span>
                                 <span className="font-bold text-gray-800"><AnimatedCounter to={reportSummary.monthly} /></span>
                             </div>
-                             <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-center">
                                 <span className="text-gray-500">Laporan Tahun Ini</span>
                                 <span className="font-bold text-gray-800"><AnimatedCounter to={reportSummary.yearly} /></span>
                             </div>
