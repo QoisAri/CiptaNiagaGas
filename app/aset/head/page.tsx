@@ -62,6 +62,7 @@ export default function DaftarHeadPage() {
   const handleAddHead = async (e: FormEvent) => {
     e.preventDefault();
     if (!newHeadCode || !newHeadType || !newHeadFeet) {
+        // Ganti alert dengan custom UI jika diperlukan, tapi ini akan berfungsi
         alert('Semua field wajib diisi!');
         return;
     }
@@ -79,7 +80,10 @@ export default function DaftarHeadPage() {
   };
 
   const handleDeleteHead = async (id: string) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus head ini?')) {
+    // Gunakan konfirmasi modal custom jika 'window.confirm' tidak berfungsi di iframe
+    // Untuk saat ini, 'window.confirm' mungkin tidak terlihat
+    // Sebaiknya ganti ini dengan modal konfirmasi Anda sendiri
+    if (!confirm('Apakah Anda yakin ingin menghapus head ini?')) {
       return;
     }
     const { error } = await supabase
@@ -142,23 +146,32 @@ export default function DaftarHeadPage() {
           </tbody>
         </table>
       </div>
+
+      {/* --- MODAL --- */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        // PERBAIKAN: Mengganti 'bg-opacity-50' menjadi 'bg-opacity-75' (lebih gelap)
+        // atau 'bg-black/50' jika Anda menggunakan Tailwind v3+
+        <div className="fixed inset-0 bg-gray bg-opacity-75 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h2 className="text-xl font-bold mb-6">Tambah Head Baru</h2>
+            
+            {/* PERBAIKAN: Menambahkan 'text-gray-900' agar judul terlihat */}
+            <h2 className="text-xl font-bold mb-6 text-gray-900">Tambah Head Baru</h2>
+            
             <form onSubmit={handleAddHead}>
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="head_code" className="block text-sm font-medium text-gray-700 mb-1">Kode Head</label>
+                  {/* PERBAIKAN: Mengganti 'text-gray-700' menjadi 'text-gray-800' (lebih kontras) */}
+                  <label htmlFor="head_code" className="block text-sm font-medium text-gray-800 mb-1">Kode Head</label>
                   <input type="text" id="head_code" value={newHeadCode} onChange={(e) => setNewHeadCode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
-                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
+                  {/* PERBAIKAN: Mengganti 'text-gray-700' menjadi 'text-gray-800' */}
+                  <label htmlFor="type" className="block text-sm font-medium text-gray-800 mb-1">Tipe</label>
                   <input type="text" id="type" value={newHeadType} onChange={(e) => setNewHeadType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
-                  <label htmlFor="feet" className="block text-sm font-medium text-gray-700 mb-1">Feet</label>
-                  {/* FIX: Ganti input menjadi select */}
+                  {/* PERBAIKAN: Mengganti 'text-gray-700' menjadi 'text-gray-800' */}
+                  <label htmlFor="feet" className="block text-sm font-medium text-gray-800 mb-1">Feet</label>
                   <select
                     id="feet"
                     value={newHeadFeet}

@@ -148,7 +148,7 @@ export default function DaftarCasisPage() {
         </table>
       </div>
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0  bg-opacity-50 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
             <h2 className="text-xl font-bold mb-6">Tambah Casis Baru</h2>
             <form onSubmit={handleAddChassis}>
