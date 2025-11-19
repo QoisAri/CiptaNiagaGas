@@ -4,12 +4,14 @@ import { useState, useEffect, FormEvent, useCallback } from 'react';
 import { createClient } from '@/utils/supabase/client'; 
 
 type Storage = {
-  id: number;
+  id: number; // ID berupa number
   storage_code: string;
   type: string;
   feet: number;
   created_at: string;
 };
+
+// --- Ikon-ikon ---
 
 const PlusIcon = () => (
   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -23,17 +25,30 @@ const TrashIcon = () => (
   </svg>
 );
 
+const PencilIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+  </svg>
+);
 
 export default function DaftarStoragePage() {
   const supabase = createClient();
+  
+  // State Data
   const [storageList, setStorageList] = useState<Storage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // State Modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // State Form
   const [newStorageCode, setNewStorageCode] = useState('');
   const [newStorageType, setNewStorageType] = useState('');
   const [newStorageFeet, setNewStorageFeet] = useState<number | ''>('');
+
+  // State Edit Mode (null = Tambah, number = ID Edit)
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   const fetchStorages = useCallback(async () => {
     setIsLoading(true);
@@ -64,27 +79,58 @@ export default function DaftarStoragePage() {
     fetchStorages();
   }, [fetchStorages]);
 
-  const handleAddStorage = async (e: FormEvent) => {
+  // --- FUNGSI SIMPAN (Insert & Update) ---
+  const handleSaveStorage = async (e: FormEvent) => {
     e.preventDefault();
     if (!newStorageCode || !newStorageType || !newStorageFeet) {
         alert('Semua field wajib diisi!');
         return;
     }
-    const { data, error } = await supabase
-      .from('storages')
-      .insert([{ storage_code: newStorageCode, type: newStorageType, feet: newStorageFeet }])
-      .select();
-    if (error) {
-      console.error('Error adding storage:', error);
-      alert('Gagal menambahkan storage baru.');
-    } else if (data) {
-      fetchStorages();
+
+    const payload = { 
+      storage_code: newStorageCode, 
+      type: newStorageType, 
+      feet: Number(newStorageFeet) 
+    };
+
+    console.log("Mengirim data:", payload, "Mode:", editingId ? "EDIT" : "TAMBAH");
+
+    try {
+      if (editingId !== null) {
+        // === LOGIKA UPDATE (EDIT) ===
+        const { data, error } = await supabase
+          .from('storages')
+          .update(payload)
+          .eq('id', editingId)
+          .select();
+
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+           throw new Error("Gagal update. ID tidak ditemukan atau izin RLS belum diatur.");
+        }
+
+      } else {
+        // === LOGIKA INSERT (TAMBAH BARU) ===
+        const { error } = await supabase
+          .from('storages')
+          .insert([payload])
+          .select();
+
+        if (error) throw error;
+      }
+
+      await fetchStorages();
       closeModal();
+
+    } catch (error: any) {
+      console.error('Error saving storage:', error);
+      alert(`Gagal menyimpan data: ${error.message}`);
     }
   };
 
   const handleDeleteStorage = async (id: number) => {
-    if (!window.confirm('Apakah Anda yakin ingin menghapus storage ini?')) {
+    if (!confirm('Apakah Anda yakin ingin menghapus storage ini?')) {
       return;
     }
     const { error } = await supabase
@@ -100,9 +146,26 @@ export default function DaftarStoragePage() {
     }
   };
 
-  const openModal = () => setIsModalOpen(true);
+  // Manajemen Modal
+  const openAddModal = () => {
+    setEditingId(null);
+    setNewStorageCode('');
+    setNewStorageType('');
+    setNewStorageFeet('');
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: Storage) => {
+    setEditingId(item.id);
+    setNewStorageCode(item.storage_code);
+    setNewStorageType(item.type);
+    setNewStorageFeet(item.feet);
+    setIsModalOpen(true);
+  };
+
   const closeModal = () => {
     setIsModalOpen(false);
+    setEditingId(null);
     setNewStorageCode('');
     setNewStorageType('');
     setNewStorageFeet('');
@@ -112,7 +175,7 @@ export default function DaftarStoragePage() {
     <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Daftar Aset Storage</h1>
-        <button onClick={openModal} className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+        <button onClick={openAddModal} className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
           <PlusIcon /> Tambah Storage
         </button>
       </div>
@@ -123,47 +186,59 @@ export default function DaftarStoragePage() {
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Kode Storage</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Tipe</th>
               <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Feet</th>
-              <th className="px-4 py-3 text-left text-sm font-medium text-gray-800 border-b">Aksi</th>
+              <th className="px-4 py-3 text-center text-sm font-medium text-gray-800 border-b">Aksi</th>
             </tr>
           </thead>
           <tbody>
-            {isLoading ? ( <tr><td colSpan={4} className="text-center py-10">Memuat data...</td></tr>
-            ) : error ? ( <tr><td colSpan={4} className="text-center py-10 text-red-500">{error}</td></tr>
+            {isLoading ? ( 
+              <tr><td colSpan={4} className="text-center py-10">Memuat data...</td></tr>
+            ) : error ? ( 
+              <tr><td colSpan={4} className="text-center py-10 text-red-500">{error}</td></tr>
             ) : storageList.length > 0 ? (
               storageList.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 border-b text-gray-900 font-semibold">{item.storage_code}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.type}</td>
                   <td className="px-4 py-3 border-b text-gray-900">{item.feet}</td>
-                  <td className="px-4 py-3 border-b text-gray-900">
-                    <button onClick={() => handleDeleteStorage(item.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100" aria-label="Hapus">
-                      <TrashIcon />
-                    </button>
+                  <td className="px-4 py-3 border-b text-center">
+                    <div className="flex justify-center gap-2">
+                      {/* Tombol Edit */}
+                      <button onClick={() => openEditModal(item)} className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-100 transition-colors" aria-label="Edit">
+                        <PencilIcon />
+                      </button>
+                      {/* Tombol Hapus */}
+                      <button onClick={() => handleDeleteStorage(item.id)} className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-100 transition-colors" aria-label="Hapus">
+                        <TrashIcon />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
-            ) : ( <tr><td colSpan={4} className="text-center py-10 text-gray-500">Tidak ada data storage.</td></tr>
+            ) : ( 
+              <tr><td colSpan={4} className="text-center py-10 text-gray-500">Tidak ada data storage.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
       {isModalOpen && (
-        <div className="fixed inset-0 bg-opacity-50 flex justify-center items-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50">
           <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-            <h2 className="text-xl font-bold mb-6">Tambah Storage Baru</h2>
-            <form onSubmit={handleAddStorage}>
+            <h2 className="text-xl font-bold mb-6 text-gray-900">
+              {editingId !== null ? 'Edit Data Storage' : 'Tambah Storage Baru'}
+            </h2>
+            <form onSubmit={handleSaveStorage}>
               <div className="space-y-4">
                 <div>
-                  <label htmlFor="storage_code" className="block text-sm font-medium text-gray-700 mb-1">Kode Storage</label>
+                  <label htmlFor="storage_code" className="block text-sm font-medium text-gray-800 mb-1">Kode Storage</label>
                   <input type="text" id="storage_code" value={newStorageCode} onChange={(e) => setNewStorageCode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
-                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Tipe</label>
+                  <label htmlFor="type" className="block text-sm font-medium text-gray-800 mb-1">Tipe</label>
                   <input type="text" id="type" value={newStorageType} onChange={(e) => setNewStorageType(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-black" required />
                 </div>
                 <div>
-                  <label htmlFor="feet" className="block text-sm font-medium text-gray-700 mb-1">Feet</label>
-                  {/* FIX: Ganti input menjadi select */}
+                  <label htmlFor="feet" className="block text-sm font-medium text-gray-800 mb-1">Feet</label>
                   <select
                     id="feet"
                     value={newStorageFeet}
@@ -180,7 +255,9 @@ export default function DaftarStoragePage() {
               </div>
               <div className="flex justify-end gap-4 mt-8">
                 <button type="button" onClick={closeModal} className="bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">Batal</button>
-                <button type="submit" className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Simpan</button>
+                <button type="submit" className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                  {editingId !== null ? 'Simpan Perubahan' : 'Simpan'}
+                </button>
               </div>
             </form>
           </div>
